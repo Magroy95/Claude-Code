@@ -1,6 +1,8 @@
 import type { AnalysisReport, Hypothese } from "@/lib/analysis/schema";
 import { DISCLAIMER } from "@/lib/analysis/pipeline";
 
+type Tone = "gruen" | "gelb" | "rot" | "neutral";
+
 function formatEur(value: number): string {
   return new Intl.NumberFormat("de-DE", {
     style: "currency",
@@ -9,11 +11,28 @@ function formatEur(value: number): string {
   }).format(value);
 }
 
-function Kachel({ label, value }: { label: string; value: string }) {
+const TONE_STYLE: Record<Tone, string> = {
+  gruen:
+    "bg-emerald-50 text-emerald-900 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-900",
+  gelb:
+    "bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950 dark:text-amber-200 dark:border-amber-900",
+  rot: "bg-red-50 text-red-900 border-red-200 dark:bg-red-950 dark:text-red-200 dark:border-red-900",
+  neutral: "border-black/10 dark:border-white/15",
+};
+
+function Kachel({
+  label,
+  value,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  tone?: Tone;
+}) {
   return (
-    <div className="rounded-lg border border-black/10 dark:border-white/15 p-4">
+    <div className={`rounded-lg border p-4 ${TONE_STYLE[tone]}`}>
       <div className="text-lg font-semibold">{value}</div>
-      <div className="text-xs text-black/60 dark:text-white/60">{label}</div>
+      <div className="text-xs opacity-70">{label}</div>
     </div>
   );
 }
@@ -44,6 +63,142 @@ const RISIKO_STYLE: Record<Hypothese["risiko"], string> = {
   MITTEL: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
   NIEDRIG: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
 };
+
+const ENERGIEKLASSE_TONE: Record<string, Tone> = {
+  "A+": "gruen",
+  A: "gruen",
+  B: "gruen",
+  C: "gelb",
+  D: "gelb",
+  E: "rot",
+  F: "rot",
+  G: "rot",
+  H: "rot",
+};
+
+function energieklasseTone(klasse: string | null): Tone {
+  if (!klasse) return "neutral";
+  return ENERGIEKLASSE_TONE[klasse.toUpperCase()] ?? "neutral";
+}
+
+function preisTone(angebotspreis: number, korridorMax: number): Tone {
+  if (angebotspreis <= korridorMax) return "gruen";
+  if (angebotspreis <= korridorMax * 1.1) return "gelb";
+  return "rot";
+}
+
+function sanierungsstauTone(maxEur: number, angebotspreisEur: number): Tone {
+  const anteil = angebotspreisEur > 0 ? maxEur / angebotspreisEur : 0;
+  if (anteil > 0.15) return "rot";
+  if (anteil > 0.05) return "gelb";
+  return "gruen";
+}
+
+const AMPEL_CONFIG: Record<
+  AnalysisReport["ampel"],
+  { label: string; style: string }
+> = {
+  GRUEN: {
+    label: "Niedriger Klärungs- und Verhandlungsbedarf",
+    style:
+      "bg-emerald-50 dark:bg-emerald-950 border-emerald-300 dark:border-emerald-900 text-emerald-900 dark:text-emerald-200",
+  },
+  GELB: {
+    label: "Mittlerer Klärungs- und Verhandlungsbedarf",
+    style:
+      "bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-900 text-amber-900 dark:text-amber-200",
+  },
+  ROT: {
+    label: "Hoher Klärungs- und Verhandlungsbedarf",
+    style:
+      "bg-red-50 dark:bg-red-950 border-red-300 dark:border-red-900 text-red-900 dark:text-red-200",
+  },
+};
+
+function FeldWert({
+  value,
+  suffix = "",
+}: {
+  value: string | number | null;
+  suffix?: string;
+}) {
+  if (value === null || value === "") {
+    return (
+      <span className="italic text-amber-700 dark:text-amber-400">
+        unbekannt – bei Besichtigung klären
+      </span>
+    );
+  }
+  return (
+    <>
+      {typeof value === "number" ? value.toLocaleString("de-DE") : value}
+      {suffix}
+    </>
+  );
+}
+
+function ObjektdatenZeile({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: string | number | null;
+  suffix?: string;
+}) {
+  return (
+    <div className="flex justify-between gap-4 border-b border-black/5 dark:border-white/10 py-1.5">
+      <dt className="text-black/60 dark:text-white/60 shrink-0">{label}</dt>
+      <dd className="text-right min-w-0 break-words">
+        <FeldWert value={value} suffix={suffix} />
+      </dd>
+    </div>
+  );
+}
+
+function PreiskorridorBar({
+  min,
+  max,
+  preis,
+}: {
+  min: number;
+  max: number;
+  preis: number;
+}) {
+  const spanMin = Math.min(min, preis);
+  const spanMax = Math.max(max, preis);
+  const polster = (spanMax - spanMin) * 0.1 || 1000;
+  const skalaMin = spanMin - polster;
+  const skalaMax = spanMax + polster;
+  const pct = (wert: number) => ((wert - skalaMin) / (skalaMax - skalaMin)) * 100;
+  const tone = preisTone(preis, max);
+  const balkenStyle: Record<Tone, string> = {
+    gruen: "bg-emerald-400 dark:bg-emerald-600",
+    gelb: "bg-amber-400 dark:bg-amber-600",
+    rot: "bg-red-400 dark:bg-red-600",
+    neutral: "bg-black/20 dark:bg-white/20",
+  };
+
+  return (
+    <div className="mb-4">
+      <div className="relative h-3 rounded-full bg-black/10 dark:bg-white/10">
+        <div
+          className={`absolute h-3 rounded-full opacity-70 ${balkenStyle[tone]}`}
+          style={{ left: `${pct(min)}%`, width: `${pct(max) - pct(min)}%` }}
+        />
+        <div
+          className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-black bg-white dark:border-white dark:bg-black"
+          style={{ left: `${pct(preis)}%` }}
+        />
+      </div>
+      <div className="flex justify-between text-xs text-black/60 dark:text-white/60 mt-1.5">
+        <span>Korridor ab {formatEur(min)}</span>
+        <span className="font-medium">Angebotspreis {formatEur(preis)}</span>
+        <span>Korridor bis {formatEur(max)}</span>
+      </div>
+    </div>
+  );
+}
 
 function HypotheseCard({ h }: { h: Hypothese }) {
   return (
@@ -109,13 +264,41 @@ export function Report({
         </div>
       )}
 
+      {/*
+        Kurzfassung: bewusst als eigenständiger, in sich abgeschlossener Block
+        gebaut (Ampel + 1-2 Sätze) – vorgesehen als künftige kostenlose
+        Preview, während der ausführliche Report darunter der kostenpflichtige
+        Teil werden soll.
+      */}
+      <section
+        id="kurzfassung"
+        className={`mb-8 rounded-lg border p-5 ${AMPEL_CONFIG[report.ampel].style}`}
+      >
+        <div className="flex items-center gap-2 mb-2 text-sm font-semibold uppercase tracking-wide">
+          <span aria-hidden className="text-lg leading-none">●</span>
+          {AMPEL_CONFIG[report.ampel].label}
+        </div>
+        <p className="text-sm">{report.kurzfazit}</p>
+        <p className="text-xs mt-2 opacity-70">
+          Die Ampel zeigt den Klärungs- und Verhandlungsbedarf vor einer Entscheidung – keine Kaufempfehlung.
+        </p>
+      </section>
+
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
-        <Kachel label="Angebotspreis" value={formatEur(o.angebotspreisEur)} />
+        <Kachel
+          label="Angebotspreis"
+          value={formatEur(o.angebotspreisEur)}
+          tone={preisTone(o.angebotspreisEur, report.orientierungswertMaxEur)}
+        />
         <Kachel
           label="Orientierungswert"
           value={`${formatEur(report.orientierungswertMinEur)}–${formatEur(report.orientierungswertMaxEur)}`}
         />
-        <Kachel label="Energieklasse" value={o.energieklasse ?? "–"} />
+        <Kachel
+          label="Energieklasse"
+          value={o.energieklasse ?? "–"}
+          tone={energieklasseTone(o.energieklasse)}
+        />
         <Kachel
           label="Grundstück"
           value={o.grundstueckQm ? `${o.grundstueckQm.toLocaleString("de-DE")} m²` : "–"}
@@ -124,13 +307,36 @@ export function Report({
           label="Gesamtbelastung / Monat"
           value={`ca. ${formatEur(report.cashflow.gesamtbelastungEur)}`}
         />
+        <Kachel
+          label="Geschätzter Sanierungsstau"
+          value={`${formatEur(report.sanierungsstauMinEur)}–${formatEur(report.sanierungsstauMaxEur)}`}
+          tone={sanierungsstauTone(report.sanierungsstauMaxEur, o.angebotspreisEur)}
+        />
       </div>
 
       <Section title="Einschätzung">
         <p className="text-sm">{report.marktEinschaetzung}</p>
       </Section>
 
+      <Section title="Objektdaten (aus Exposé extrahiert)">
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 text-sm">
+          <ObjektdatenZeile label="Lage" value={o.adresseOderLage} />
+          <ObjektdatenZeile label="Baujahr" value={o.baujahr !== null ? String(o.baujahr) : null} />
+          <ObjektdatenZeile label="Wohnfläche" value={o.wohnflaecheQm} suffix=" m²" />
+          <ObjektdatenZeile label="Grundstück" value={o.grundstueckQm} suffix=" m²" />
+          <ObjektdatenZeile label="Zimmer" value={o.zimmer} />
+          <ObjektdatenZeile label="Energieklasse" value={o.energieklasse} />
+          <ObjektdatenZeile label="Energiebedarf" value={o.energiebedarfKwhM2a} suffix=" kWh/(m²·a)" />
+          <ObjektdatenZeile label="Heizungstyp" value={o.heizungstyp} />
+        </dl>
+      </Section>
+
       <Section title="Marktwert-Orientierung">
+        <PreiskorridorBar
+          min={report.orientierungswertMinEur}
+          max={report.orientierungswertMaxEur}
+          preis={o.angebotspreisEur}
+        />
         <p className="text-sm mb-3">{report.marktwertText}</p>
         <p className="text-sm mb-3">
           <span className="font-medium">Verhandlungsargumente: </span>
@@ -173,7 +379,21 @@ export function Report({
               key={i}
               className="rounded-lg border border-black/10 dark:border-white/15 p-4 break-inside-avoid"
             >
-              <div className="font-medium mb-1">{s.titel}</div>
+              <div className="flex items-start justify-between gap-3 mb-1">
+                <div className="font-medium">{s.titel}</div>
+                {s.deltaMonatlicheBelastungEur != null && (
+                  <span
+                    className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${
+                      s.deltaMonatlicheBelastungEur >= 0
+                        ? "bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300"
+                        : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                    }`}
+                  >
+                    {s.deltaMonatlicheBelastungEur >= 0 ? "+" : ""}
+                    {formatEur(s.deltaMonatlicheBelastungEur)}/Monat
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-black/70 dark:text-white/70 mb-1">{s.beschreibung}</p>
               <p className="text-sm">{s.auswirkungText}</p>
             </div>
@@ -181,29 +401,44 @@ export function Report({
         </div>
       </Section>
 
-      <Section title="Drei Argumente gegen den Kauf">
-        <div className="space-y-3">
-          {report.argumenteContra.map((a, i) => (
-            <div key={i} className="break-inside-avoid">
-              <div className="font-medium">
-                {i + 1}. {a.titel}
-              </div>
-              <p className="text-sm text-black/70 dark:text-white/70">{a.text}</p>
+      <Section title="Abwägung: Pro & Contra">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-red-700 dark:text-red-400 mb-2">
+              Contra
+            </h3>
+            <div className="space-y-3">
+              {report.argumenteContra.map((a, i) => (
+                <div
+                  key={i}
+                  className="break-inside-avoid rounded-lg border border-red-100 dark:border-red-950 bg-red-50/40 dark:bg-red-950/20 p-3"
+                >
+                  <div className="font-medium text-sm">
+                    {i + 1}. {a.titel}
+                  </div>
+                  <p className="text-sm text-black/70 dark:text-white/70">{a.text}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Drei Argumente für den Kauf">
-        <div className="space-y-3">
-          {report.argumentePro.map((a, i) => (
-            <div key={i} className="break-inside-avoid">
-              <div className="font-medium">
-                {i + 1}. {a.titel}
-              </div>
-              <p className="text-sm text-black/70 dark:text-white/70">{a.text}</p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-2">
+              Pro
+            </h3>
+            <div className="space-y-3">
+              {report.argumentePro.map((a, i) => (
+                <div
+                  key={i}
+                  className="break-inside-avoid rounded-lg border border-emerald-100 dark:border-emerald-950 bg-emerald-50/40 dark:bg-emerald-950/20 p-3"
+                >
+                  <div className="font-medium text-sm">
+                    {i + 1}. {a.titel}
+                  </div>
+                  <p className="text-sm text-black/70 dark:text-white/70">{a.text}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
       </Section>
 

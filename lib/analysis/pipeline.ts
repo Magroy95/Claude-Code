@@ -16,7 +16,16 @@ import {
   type MarktwertAgentResult,
   type RisikoAgentResult,
   type FinanzAgentResult,
+  type Hypothese,
 } from "./schema";
+import {
+  berechneFinanzierungsKennzahlen,
+  instandhaltungsruecklage,
+  monatlicheAnnuitaet,
+  STANDARD_TILGUNG,
+  STANDARD_ZINS,
+  type FinanzierungsKennzahlen,
+} from "./finance";
 
 const DISCLAIMER_HINWEIS =
   "Alle Angaben sind unverbindliche, KI-gestützte Hypothesen auf Basis der bereitgestellten Unterlagen. " +
@@ -159,7 +168,11 @@ async function risikoAgent(
       "\n\nDu bist in diesem Schritt der Bausachverständige (Ersteinschätzung auf Basis von Exposé-Daten, keine " +
       "Vor-Ort-Prüfung). Formuliere priorisierte Hypothesen zu Substanz- und Kostenrisiken, gruppiert in die " +
       "Kategorien KAUFENTSCHEIDEND, KOSTENRELEVANT und STRATEGISCH. Jede Hypothese braucht einen Kostenrahmen " +
-      "als Text (z.B. '25.000–45.000 EUR'), konkrete Prüffragen für die Besichtigung und eine Risikostufe. " +
+      "als Text (z.B. '25.000–45.000 EUR') UND denselben Kostenrahmen als Zahlen in kostenMinEur/kostenMaxEur " +
+      "(ohne Formatierung, z.B. 25000 und 45000) – diese Zahlen werden programmatisch zum geschätzten " +
+      "Sanierungsstau aufsummiert, müssen also exakt zu kostenrahmenText passen. Ist ein Kostenrahmen nicht " +
+      "direkt bezifferbar (z.B. reines Verhandlungspotenzial), setze kostenMinEur/kostenMaxEur auf null. " +
+      "Außerdem: konkrete Prüffragen für die Besichtigung und eine Risikostufe. " +
       "Nutze Baujahr, Energieklasse und Heizungstyp, um typische Schwachstellen der Baualtersklasse abzuleiten " +
       "(z.B. Asbest, Elektrik, GEG/EU-EPBD-Sanierungspflichten). Verwende durchgehend das vorgegebene " +
       "Hypothesen-Framing statt Tatsachenbehauptungen.",
@@ -182,25 +195,43 @@ async function finanzAgent(
   objektdaten: Objektdaten,
   eigenkapitalEur: number,
   marktwert: MarktwertAgentResult,
+  kennzahlen: FinanzierungsKennzahlen,
+  instandhaltungsruecklageEur: number,
+  sanierungsKreditAnnuitaetEur: number,
 ): Promise<FinanzAgentResult> {
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
     max_tokens: 4096,
     system:
       PERSONA_PREAMBLE +
-      "\n\nDu bist in diesem Schritt der Investor mit Fokus auf Finanzierung. Berechne eine konservative, " +
-      "plausible monatliche Gesamtbelastung (Annuität bei marktüblichem Zins ~4,5% / 2% Tilgung, " +
-      "Instandhaltungsrücklage 2-2,50 EUR/m², sonstige Nebenkosten) sowie einen Opportunitätskostenvergleich zur " +
-      "Miete. Erstelle zusätzlich einen Risiko-Stresstest mit 2-3 Szenarien (z.B. Zinsanstieg bei " +
-      "Anschlussfinanzierung, Wertverlust, energetische Sanierungspflicht) inkl. konkreter Auswirkung auf die " +
-      "monatliche Belastung. Rechne eher konservativ als beschönigend.",
+      "\n\nDu bist in diesem Schritt der Investor mit Fokus auf Finanzierung. Die monatliche Annuität, die " +
+      "Instandhaltungsrücklage sowie die Zahlen für den Zinsanstiegs- und den Sanierungskredit-Stresstest sind " +
+      "bereits deterministisch vorberechnet (siehe 'Bereits berechnete Zahlen' unten) – übernimm sie unverändert " +
+      "in deine Texte, rechne sie nicht neu und widersprich ihnen nicht. Schätze selbst nur die sonstigen " +
+      "Nebenkosten (Grundsteuer, Gebäudeversicherung u.ä.) sowie einen Opportunitätskostenvergleich zur Miete. " +
+      "Erstelle zusätzlich einen Risiko-Stresstest mit 2-3 Szenarien: nutze für 'Zinsanstieg bei " +
+      "Anschlussfinanzierung' exakt die vorberechnete Annuität-bei-Zinsanstieg-Differenz als " +
+      "deltaMonatlicheBelastungEur, für ein Szenario zur energetischen Sanierungspflicht die vorberechnete " +
+      "Sanierungskredit-Annuität als deltaMonatlicheBelastungEur, und ergänze 1 weiteres Szenario (z.B. " +
+      "Wertverlust) ohne klare monatliche Delta (dort deltaMonatlicheBelastungEur = null). Rechne eher " +
+      "konservativ als beschönigend.",
     messages: [
       {
         role: "user",
         content:
           `Objektdaten: ${JSON.stringify(objektdaten)}\nEigenkapital: ${eigenkapitalEur} EUR\n` +
           `Orientierungswert: ${marktwert.orientierungswertMinEur}-${marktwert.orientierungswertMaxEur} EUR\n` +
-          `Kaufnebenkosten: ${marktwert.kaufnebenkostenSchaetzungEur} EUR`,
+          `Kaufnebenkosten: ${marktwert.kaufnebenkostenSchaetzungEur} EUR\n\n` +
+          "Bereits berechnete Zahlen (Standardannahme 4,5% Zins/2% Tilgung, Zinsanstiegs-Stresstest 6,5% Zins " +
+          "nach 10 Jahren, nicht selbst neu berechnen):\n" +
+          `Darlehenssumme: ${kennzahlen.darlehenEur} EUR\n` +
+          `Monatliche Annuität: ${kennzahlen.monatlicheAnnuitaetEur} EUR\n` +
+          `Instandhaltungsrücklage: ${instandhaltungsruecklageEur} EUR\n` +
+          `Restschuld nach 10 Jahren: ${kennzahlen.restschuldNach10JahrenEur} EUR\n` +
+          `Annuität bei Zinsanstieg auf 6,5%: ${kennzahlen.annuitaetBeiZinsanstiegEur} EUR ` +
+          `(Mehrbelastung: +${kennzahlen.deltaBeiZinsanstiegEur} EUR/Monat)\n` +
+          `Monatliche Annuität eines Sanierungskredits über den mittleren geschätzten Sanierungsstau: ` +
+          `+${sanierungsKreditAnnuitaetEur} EUR/Monat`,
       },
     ],
     output_config: { format: zodOutputFormat(finanzAgentSchema), effort: "high" },
@@ -231,7 +262,14 @@ async function syntheseAgent(input: {
       "Preis-Leistungs-Priorität, nicht nach vollständiger energetischer Sanierung.\n\n" +
       "Das Gesamtbild ist ein Fließtext, der klar benennt, was wirklich wichtig und richtig ist, ohne in " +
       "idealistische Detailversessenheit abzudriften, und der die wichtigsten offenen Punkte vor der " +
-      "Kaufentscheidung nennt.",
+      "Kaufentscheidung nennt.\n\n" +
+      "Zusätzlich: Setze 'ampel' auf GRUEN/GELB/ROT und schreibe ein 1-2-sätziges 'kurzfazit'. Wichtig: Die " +
+      "Ampel bewertet NICHT Kauf/Nichtkauf, sondern ausschließlich den Klärungs- und Verhandlungsbedarf vor " +
+      "einer Entscheidung (ROT = mehrere KAUFENTSCHEIDEND-Hypothesen mit hohem Risiko und/oder Preis deutlich " +
+      "über dem Orientierungskorridor und/oder sehr dünne Eigenkapitaldecke; GELB = einzelne relevante Punkte " +
+      "zu klären, aber grundsätzlich im Rahmen; GRUEN = wenige Auffälligkeiten, Preis im/unter Korridor, " +
+      "solide Finanzierung). Formuliere das kurzfazit im selben Hypothesen-Framing wie den Rest, ohne " +
+      "Kaufempfehlung.",
     messages: [
       {
         role: "user",
@@ -242,6 +280,17 @@ async function syntheseAgent(input: {
   });
   if (!message.parsed_output) throw new Error("Synthese fehlgeschlagen");
   return message.parsed_output;
+}
+
+function summiereSanierungsstau(hypothesen: Hypothese[]): {
+  sanierungsstauMinEur: number;
+  sanierungsstauMaxEur: number;
+} {
+  const bezifferbar = hypothesen.filter((h) => h.kategorie !== "STRATEGISCH");
+  return {
+    sanierungsstauMinEur: bezifferbar.reduce((summe, h) => summe + (h.kostenMinEur ?? 0), 0),
+    sanierungsstauMaxEur: bezifferbar.reduce((summe, h) => summe + (h.kostenMaxEur ?? 0), 0),
+  };
 }
 
 async function loadExposeContentBlock(analysisId: string) {
@@ -266,8 +315,37 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     const objektdaten = await extraktionAgent(expose, analysis.freitext);
     const marktwert = await marktwertAgent(objektdaten, analysis.verkaufsart);
     const risiko = await risikoAgent(objektdaten, analysis.freitext);
-    const finanz = await finanzAgent(objektdaten, analysis.eigenkapital, marktwert);
+
+    const { sanierungsstauMinEur, sanierungsstauMaxEur } = summiereSanierungsstau(risiko.hypothesen);
+    const instandhaltungsruecklageEur = instandhaltungsruecklage(objektdaten.wohnflaecheQm);
+    const kennzahlen = berechneFinanzierungsKennzahlen({
+      angebotspreisEur: objektdaten.angebotspreisEur,
+      kaufnebenkostenEur: marktwert.kaufnebenkostenSchaetzungEur,
+      eigenkapitalEur: analysis.eigenkapital,
+    });
+    const sanierungsKreditAnnuitaetEur = monatlicheAnnuitaet({
+      darlehenEur: Math.round((sanierungsstauMinEur + sanierungsstauMaxEur) / 2),
+      zinsSatz: STANDARD_ZINS,
+      tilgungSatz: STANDARD_TILGUNG,
+    });
+
+    const finanz = await finanzAgent(
+      objektdaten,
+      analysis.eigenkapital,
+      marktwert,
+      kennzahlen,
+      instandhaltungsruecklageEur,
+      sanierungsKreditAnnuitaetEur,
+    );
     const synthese = await syntheseAgent({ objektdaten, marktwert, risiko, finanz });
+
+    const cashflow = {
+      monatlicheAnnuitaetEur: kennzahlen.monatlicheAnnuitaetEur,
+      instandhaltungsruecklageEur,
+      sonstigeNebenkostenEur: finanz.sonstigeNebenkostenEur,
+      gesamtbelastungEur:
+        kennzahlen.monatlicheAnnuitaetEur + instandhaltungsruecklageEur + finanz.sonstigeNebenkostenEur,
+    };
 
     const report: AnalysisReport = analysisReportSchema.parse({
       objektdaten,
@@ -277,14 +355,18 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       marktwertText: marktwert.marktwertText,
       verhandlungsargumente: marktwert.verhandlungsargumente,
       kaufnebenkostenSchaetzungEur: marktwert.kaufnebenkostenSchaetzungEur,
-      cashflow: finanz.cashflow,
+      cashflow,
       opportunitaetskostenText: finanz.opportunitaetskostenText,
       risikoSzenarien: finanz.risikoSzenarien,
       argumenteContra: synthese.argumenteContra,
       argumentePro: synthese.argumentePro,
       hypothesen: risiko.hypothesen,
+      sanierungsstauMinEur,
+      sanierungsstauMaxEur,
       sanierungsfahrplan: synthese.sanierungsfahrplan,
       gesamtbild: synthese.gesamtbild,
+      ampel: synthese.ampel,
+      kurzfazit: synthese.kurzfazit,
     });
 
     await prisma.$transaction([
@@ -347,7 +429,10 @@ export async function runImpactPipeline(analysisId: string): Promise<void> {
         PERSONA_PREAMBLE +
         "\n\nDu aktualisierst eine bestehende Immobilien-Ersteinschätzung mit neuen Informationen aus der " +
         "Besichtigung. Gib den vollständigen, aktualisierten Report im geforderten Schema zurück sowie eine " +
-        "kurze Zusammenfassung, was sich durch die neuen Informationen geändert hat und warum.",
+        "kurze Zusammenfassung, was sich durch die neuen Informationen geändert hat und warum. Achte darauf, " +
+        "dass hypothesen[].kostenMinEur/kostenMaxEur, die daraus abgeleiteten sanierungsstauMinEur/MaxEur, die " +
+        "cashflow-Zahlen sowie ampel/kurzfazit weiterhin intern konsistent zueinander sind, falls sich durch " +
+        "die neuen Informationen Kostenrahmen oder Risikoeinschätzungen ändern.",
       messages: [
         {
           role: "user",
