@@ -116,8 +116,26 @@ def fetch_universe(sec_headers, limiter, counter):
     return universe
 
 
+def _ticker_rank(ticker):
+    """Lower rank = more likely to be the primary common-stock ticker.
+    Preferred shares, warrants, notes etc. share their parent's CIK but use
+    a longer/hyphenated ticker (e.g. JPM vs JPM-PM, HBAN vs HBANP, NE vs
+    NE-WT) -- prefer the shortest, non-hyphenated ticker per CIK."""
+    return ("-" in ticker, len(ticker), ticker)
+
+
 def stage1_filter(universe):
-    return [c for c in universe if c["exchange"] in STAGE1_EXCHANGES]
+    """Nasdaq/NYSE listed, one ticker per company (drop preferred shares,
+    warrants, and notes that share a CIK with their common-stock parent --
+    their price isn't tied 1:1 to the company's per-common-share EPS, so
+    computing P/E or dividend yield against them produces nonsense)."""
+    listed = [c for c in universe if c["exchange"] in STAGE1_EXCHANGES]
+    best_by_cik = {}
+    for c in listed:
+        current = best_by_cik.get(c["cik"])
+        if current is None or _ticker_rank(c["ticker"]) < _ticker_rank(current["ticker"]):
+            best_by_cik[c["cik"]] = c
+    return list(best_by_cik.values())
 
 
 def most_recent_annual_value(facts_taxonomy, concept_names):
