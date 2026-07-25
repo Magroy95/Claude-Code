@@ -65,7 +65,9 @@ export const analysisReportSchema = z.object({
   orientierungswertMaxEur: z.number(),
   marktEinschaetzung: z.string(),
   marktwertText: z.string(),
-  verhandlungsargumente: z.string(),
+  // Einzelne, in sich abgeschlossene Verhandlungsargumente statt eines
+  // durchnummerierten Fließtexts, damit sie als Liste/Karten darstellbar sind.
+  verhandlungsargumente: z.array(argumentSchema).min(2).max(5),
   kaufnebenkostenSchaetzungEur: z.number(),
   cashflow: z.object({
     monatlicheAnnuitaetEur: z.number(),
@@ -73,6 +75,11 @@ export const analysisReportSchema = z.object({
     sonstigeNebenkostenEur: z.number(),
     gesamtbelastungEur: z.number(),
   }),
+  // Ortsübliche Vergleichsmiete als Zahlenspanne für eine direkte
+  // Kaufen-vs-Mieten-Gegenüberstellung; opportunitaetskostenText bleibt kurz
+  // (Einordnung, keine Wiederholung der bereits angezeigten Zahlen).
+  vergleichsmieteMinEur: z.number(),
+  vergleichsmieteMaxEur: z.number(),
   opportunitaetskostenText: z.string(),
   risikoSzenarien: z.array(risikoSzenarioSchema).min(1),
   argumenteContra: z.array(argumentSchema).min(1),
@@ -83,7 +90,10 @@ export const analysisReportSchema = z.object({
   sanierungsstauMinEur: z.number(),
   sanierungsstauMaxEur: z.number(),
   sanierungsfahrplan: z.array(sanierungsSchrittSchema).min(1),
-  gesamtbild: z.string(),
+  // Kurzer Fließtext-Kern; die "wichtigsten offenen Punkte" stehen separat
+  // als Liste in offenePunkte statt am Ende des Fließtexts eingebettet.
+  gesamtbildText: z.string(),
+  offenePunkte: z.array(z.string()).min(2).max(6),
   // Kurzfassung für eine spätere Free-Preview (Ampel + Einordnung), der
   // ausführliche Report bleibt der kostenpflichtige Teil.
   ampel: ampelStufe,
@@ -104,7 +114,7 @@ export const marktwertAgentSchema = z.object({
   orientierungswertMaxEur: z.number(),
   marktEinschaetzung: z.string(),
   marktwertText: z.string(),
-  verhandlungsargumente: z.string(),
+  verhandlungsargumente: z.array(argumentSchema).min(2).max(5),
   kaufnebenkostenSchaetzungEur: z.number(),
 });
 export type MarktwertAgentResult = z.infer<typeof marktwertAgentSchema>;
@@ -119,6 +129,8 @@ export const finanzAgentSchema = z.object({
   // deterministisch berechnet (lib/analysis/finance.ts) und dem Agenten als
   // gegebene Zahlen übergeben; nur die sonstigen Nebenkosten sind Schätzung.
   sonstigeNebenkostenEur: z.number(),
+  vergleichsmieteMinEur: z.number(),
+  vergleichsmieteMaxEur: z.number(),
   opportunitaetskostenText: z.string(),
   risikoSzenarien: z.array(risikoSzenarioSchema).min(1),
 });
@@ -128,7 +140,8 @@ export const syntheseAgentSchema = z.object({
   argumenteContra: z.array(argumentSchema).min(1),
   argumentePro: z.array(argumentSchema).min(1),
   sanierungsfahrplan: z.array(sanierungsSchrittSchema).min(1),
-  gesamtbild: z.string(),
+  gesamtbildText: z.string(),
+  offenePunkte: z.array(z.string()).min(2).max(6),
   ampel: ampelStufe,
   kurzfazit: z.string(),
 });

@@ -156,6 +156,13 @@ function ObjektdatenZeile({
   );
 }
 
+const EINORDNUNG_TEXT_STYLE: Record<Tone, string> = {
+  gruen: "text-emerald-700 dark:text-emerald-400",
+  gelb: "text-amber-700 dark:text-amber-400",
+  rot: "text-red-700 dark:text-red-400",
+  neutral: "text-black/60 dark:text-white/60",
+};
+
 function PreiskorridorBar({
   min,
   max,
@@ -167,7 +174,7 @@ function PreiskorridorBar({
 }) {
   const spanMin = Math.min(min, preis);
   const spanMax = Math.max(max, preis);
-  const polster = (spanMax - spanMin) * 0.1 || 1000;
+  const polster = (spanMax - spanMin) * 0.18 || 1000;
   const skalaMin = spanMin - polster;
   const skalaMax = spanMax + polster;
   const pct = (wert: number) => ((wert - skalaMin) / (skalaMax - skalaMin)) * 100;
@@ -178,24 +185,94 @@ function PreiskorridorBar({
     rot: "bg-red-400 dark:bg-red-600",
     neutral: "bg-black/20 dark:bg-white/20",
   };
+  const minPct = pct(min);
+  const maxPct = pct(max);
+  const preisPct = pct(preis);
+
+  // Der Angebotspreis kann außerhalb des Korridors liegen – die Einordnung
+  // sagt explizit, ob und um wie viel, statt das nur aus den Positionen auf
+  // dem Zahlenstrahl ablesen zu lassen.
+  const einordnung: { text: string; tone: Tone } =
+    preis > max
+      ? { text: `+${formatEur(preis - max)} über Korridor`, tone: "rot" }
+      : preis < min
+        ? { text: `${formatEur(min - preis)} unter Korridor`, tone: "gruen" }
+        : { text: "im Korridor", tone: "gruen" };
 
   return (
-    <div className="mb-4">
-      <div className="relative h-3 rounded-full bg-black/10 dark:bg-white/10">
+    <div className="mb-6 pt-7">
+      <div className="relative">
         <div
-          className={`absolute h-3 rounded-full opacity-70 ${balkenStyle[tone]}`}
-          style={{ left: `${pct(min)}%`, width: `${pct(max) - pct(min)}%` }}
-        />
-        <div
-          className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-black bg-white dark:border-white dark:bg-black"
-          style={{ left: `${pct(preis)}%` }}
-        />
+          className="absolute bottom-full mb-1.5 -translate-x-1/2 text-xs whitespace-nowrap"
+          style={{ left: `${preisPct}%` }}
+        >
+          <span className="font-semibold">Angebotspreis {formatEur(preis)}</span>{" "}
+          <span className={EINORDNUNG_TEXT_STYLE[einordnung.tone]}>({einordnung.text})</span>
+        </div>
+        <div className="relative h-3 rounded-full bg-black/10 dark:bg-white/10">
+          <div
+            className={`absolute h-3 rounded-full opacity-70 ${balkenStyle[tone]}`}
+            style={{ left: `${minPct}%`, width: `${maxPct - minPct}%` }}
+          />
+          <div
+            className="absolute top-1/2 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-black bg-white dark:border-white dark:bg-black"
+            style={{ left: `${preisPct}%` }}
+          />
+        </div>
+        <div className="relative mt-1.5 text-xs text-black/60 dark:text-white/60" style={{ height: "1.4em" }}>
+          <span className="absolute" style={{ left: `${minPct}%` }}>
+            {formatEur(min)}
+          </span>
+          <span className="absolute -translate-x-full" style={{ left: `${maxPct}%` }}>
+            {formatEur(max)}
+          </span>
+        </div>
       </div>
-      <div className="flex justify-between text-xs text-black/60 dark:text-white/60 mt-1.5">
-        <span>Korridor ab {formatEur(min)}</span>
-        <span className="font-medium">Angebotspreis {formatEur(preis)}</span>
-        <span>Korridor bis {formatEur(max)}</span>
-      </div>
+    </div>
+  );
+}
+
+function KaufenMietenVergleich({
+  kaufenEur,
+  mieteMinEur,
+  mieteMaxEur,
+}: {
+  kaufenEur: number;
+  mieteMinEur: number;
+  mieteMaxEur: number;
+}) {
+  const mieteMitte = (mieteMinEur + mieteMaxEur) / 2;
+  const maxWert = Math.max(kaufenEur, mieteMitte) || 1;
+  const zeilen = [
+    {
+      label: "Kaufen (Gesamtbelastung)",
+      wert: kaufenEur,
+      anzeige: `${formatEur(kaufenEur)}/Monat`,
+      style: "bg-black/70 dark:bg-white/70",
+    },
+    {
+      label: "Vergleichsmiete",
+      wert: mieteMitte,
+      anzeige: `${formatEur(mieteMinEur)}–${formatEur(mieteMaxEur)}/Monat`,
+      style: "bg-black/25 dark:bg-white/25",
+    },
+  ];
+  return (
+    <div className="space-y-2 mb-3">
+      {zeilen.map((z) => (
+        <div key={z.label}>
+          <div className="flex justify-between text-xs text-black/60 dark:text-white/60 mb-1">
+            <span>{z.label}</span>
+            <span className="font-medium text-black dark:text-white">{z.anzeige}</span>
+          </div>
+          <div className="h-2.5 rounded-full bg-black/5 dark:bg-white/10">
+            <div
+              className={`h-2.5 rounded-full ${z.style}`}
+              style={{ width: `${(z.wert / maxWert) * 100}%` }}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -337,18 +414,30 @@ export function Report({
           max={report.orientierungswertMaxEur}
           preis={o.angebotspreisEur}
         />
-        <p className="text-sm mb-3">{report.marktwertText}</p>
-        <p className="text-sm mb-3">
-          <span className="font-medium">Verhandlungsargumente: </span>
-          {report.verhandlungsargumente}
-        </p>
+        <p className="text-sm mb-4">{report.marktwertText}</p>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-white/60 mb-2">
+          Verhandlungsargumente
+        </h3>
+        <div className="space-y-2 mb-4">
+          {report.verhandlungsargumente.map((a, i) => (
+            <div
+              key={i}
+              className="rounded-lg border-l-4 border-amber-400 dark:border-amber-600 bg-amber-50/40 dark:bg-amber-950/20 pl-3 pr-3 py-2"
+            >
+              <div className="font-medium text-sm">
+                {i + 1}. {a.titel}
+              </div>
+              <p className="text-sm text-black/70 dark:text-white/70">{a.text}</p>
+            </div>
+          ))}
+        </div>
         <p className="text-sm">
           Kaufnebenkosten (Schätzung): {formatEur(report.kaufnebenkostenSchaetzungEur)}
         </p>
       </Section>
 
       <Section title="Cashflow-Analyse">
-        <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="grid grid-cols-2 gap-3 mb-5">
           <Kachel
             label="Monatliche Annuität"
             value={formatEur(report.cashflow.monatlicheAnnuitaetEur)}
@@ -366,10 +455,15 @@ export function Report({
             value={formatEur(report.cashflow.gesamtbelastungEur)}
           />
         </div>
-        <p className="text-sm">
-          <span className="font-medium">Opportunitätskostenvergleich: </span>
-          {report.opportunitaetskostenText}
-        </p>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-white/60 mb-2">
+          Kaufen vs. Mieten
+        </h3>
+        <KaufenMietenVergleich
+          kaufenEur={report.cashflow.gesamtbelastungEur}
+          mieteMinEur={report.vergleichsmieteMinEur}
+          mieteMaxEur={report.vergleichsmieteMaxEur}
+        />
+        <p className="text-sm">{report.opportunitaetskostenText}</p>
       </Section>
 
       <Section title="Risiko-Stress-Test">
@@ -483,8 +577,21 @@ export function Report({
         </div>
       </Section>
 
-      <Section title="Gesamtbild">
-        <p className="text-sm whitespace-pre-line">{report.gesamtbild}</p>
+      <Section title="Gesamtbild & offene Punkte">
+        <p className="text-sm whitespace-pre-line mb-4">{report.gesamtbildText}</p>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-white/60 mb-2">
+          Wichtigste offene Punkte vor der Kaufentscheidung
+        </h3>
+        <ul className="space-y-1.5">
+          {report.offenePunkte.map((punkt, i) => (
+            <li key={i} className="flex items-start gap-2 text-sm">
+              <span aria-hidden className="mt-0.5 shrink-0 text-black/40 dark:text-white/40">
+                ☐
+              </span>
+              <span>{punkt}</span>
+            </li>
+          ))}
+        </ul>
       </Section>
 
       <footer className="mt-10 pt-4 border-t border-black/10 dark:border-white/15 text-xs text-black/50 dark:text-white/50">

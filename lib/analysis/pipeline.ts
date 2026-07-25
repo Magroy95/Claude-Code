@@ -139,9 +139,11 @@ async function marktwertAgent(
       PERSONA_PREAMBLE +
       "\n\nDu bist in diesem Schritt der Investor: Ordne den Angebotspreis anhand der Objektdaten ein " +
       "(Quadratmeterpreis, Baujahr, Energieklasse, Grundstücksgröße, Lage) und leite einen " +
-      "Orientierungswert-Korridor sowie konkrete, zahlenbasierte Verhandlungsargumente ab (z.B. Energieklasse " +
-      "und absehbare Sanierungspflichten als Verhandlungshebel). Kein absoluter Werturteil, immer als Korridor " +
-      "und Hypothese formulieren.",
+      "Orientierungswert-Korridor ab. Kein absoluter Werturteil, immer als Korridor und Hypothese formulieren.\n\n" +
+      "Für verhandlungsargumente: 2-4 EIGENSTÄNDIGE Argumente als Liste, NICHT ein einziger durchnummerierter " +
+      "Fließtext. Jedes Argument braucht einen kurzen titel (3-6 Wörter) und einen text (1-3 Sätze, " +
+      "zahlenbasiert, z.B. konkreter Kostenrahmen oder Preisabschlag). Jedes Argument muss für sich allein " +
+      "verständlich sein, ohne die anderen gelesen zu haben.",
     messages: [
       {
         role: "user",
@@ -175,7 +177,15 @@ async function risikoAgent(
       "Außerdem: konkrete Prüffragen für die Besichtigung und eine Risikostufe. " +
       "Nutze Baujahr, Energieklasse und Heizungstyp, um typische Schwachstellen der Baualtersklasse abzuleiten " +
       "(z.B. Asbest, Elektrik, GEG/EU-EPBD-Sanierungspflichten). Verwende durchgehend das vorgegebene " +
-      "Hypothesen-Framing statt Tatsachenbehauptungen.",
+      "Hypothesen-Framing statt Tatsachenbehauptungen.\n\n" +
+      "Standard-Check bei JEDER Analyse mit energetischem Sanierungsbedarf an der Fassade (Energieklasse E-H " +
+      "oder auffällig hoher Energiebedarf): Nimm immer eine Hypothese/Prüffrage zur Mauerwerksart auf, da diese " +
+      "die realistische Dämmmethode und damit die Kosten bestimmt – konkret: Ist das Mauerwerk zweischalig mit " +
+      "Luft-/Hohlraum (in Norddeutschland bei Klinker-Verblendmauerwerk verbreitet), sodass eine kostengünstige " +
+      "Einblasdämmung möglich wäre? Oder ist es einschaliges/massives Mauerwerk ohne Hohlraum, bei dem stattdessen " +
+      "teurere Alternativen (WDVS/Außendämmung oder Innendämmung mit Tauwasser-/Schimmelrisiko) nötig sind? " +
+      "Nenne diese Unterscheidung explizit in der Hypothese und nimm 'Mauerwerksaufbau (ein-/zweischalig, " +
+      "Hohlraum vorhanden?) prüfen bzw. beim Verkäufer/Bauakte erfragen' als Prüffrage auf.",
     messages: [
       {
         role: "user",
@@ -208,7 +218,11 @@ async function finanzAgent(
       "Instandhaltungsrücklage sowie die Zahlen für den Zinsanstiegs- und den Sanierungskredit-Stresstest sind " +
       "bereits deterministisch vorberechnet (siehe 'Bereits berechnete Zahlen' unten) – übernimm sie unverändert " +
       "in deine Texte, rechne sie nicht neu und widersprich ihnen nicht. Schätze selbst nur die sonstigen " +
-      "Nebenkosten (Grundsteuer, Gebäudeversicherung u.ä.) sowie einen Opportunitätskostenvergleich zur Miete. " +
+      "Nebenkosten (Grundsteuer, Gebäudeversicherung u.ä.) sowie vergleichsmieteMinEur/MaxEur (ortsübliche " +
+      "Kaltmiete/Monat für ein vergleichbares Objekt in Wohnfläche und Lage). opportunitaetskostenText ist " +
+      "bewusst KURZ (max. 2 Sätze) und enthält NUR die Einordnung/Interpretation (z.B. was der Unterschied " +
+      "zwischen Kaufen und Mieten für den Vermögensaufbau bedeutet) – wiederhole darin keine Zahlen, die schon " +
+      "als Kacheln angezeigt werden (Annuität, Rücklage, Gesamtbelastung, Vergleichsmiete).\n\n" +
       "Erstelle zusätzlich einen Risiko-Stresstest mit 2-3 Szenarien: nutze für 'Zinsanstieg bei " +
       "Anschlussfinanzierung' exakt die vorberechnete Annuität-bei-Zinsanstieg-Differenz als " +
       "deltaMonatlicheBelastungEur, für ein Szenario zur energetischen Sanierungspflicht die vorberechnete " +
@@ -259,10 +273,15 @@ async function syntheseAgent(input: {
       "bessere Konditionen/Beleihung zu erzielen. Nimm nur Maßnahmen auf, die sich nach Preis-Leistung " +
       "rechtfertigen lassen (Kostenrahmen vs. Energieklassensprung vs. Förderquote vs. Effekt auf die " +
       "Anschlussfinanzierung) – keine Maßnahme aus ökologischem Idealismus. Ordne die Maßnahmen nach " +
-      "Preis-Leistungs-Priorität, nicht nach vollständiger energetischer Sanierung.\n\n" +
-      "Das Gesamtbild ist ein Fließtext, der klar benennt, was wirklich wichtig und richtig ist, ohne in " +
-      "idealistische Detailversessenheit abzudriften, und der die wichtigsten offenen Punkte vor der " +
-      "Kaufentscheidung nennt.\n\n" +
+      "Preis-Leistungs-Priorität, nicht nach vollständiger energetischer Sanierung. Falls die Hypothesen eine " +
+      "Prüfung der Mauerwerksart (ein-/zweischalig, Hohlraum) enthalten: Formuliere den Fassaden-Dämmschritt " +
+      "konditional dazu (z.B. 'bei zweischaligem Mauerwerk mit Hohlraum: günstige Einblasdämmung; falls " +
+      "einschalig/massiv: teurere WDVS-/Innendämmung als Alternative einplanen') statt eine Methode pauschal zu " +
+      "unterstellen.\n\n" +
+      "Gesamtbild: gesamtbildText ist ein KURZER Fließtext (3-5 Sätze) für den zentralen Gesamteindruck – ohne " +
+      "die Zahlen zu wiederholen, die schon in Kacheln/anderen Sections stehen. Die 'wichtigsten offenen Punkte " +
+      "vor der Kaufentscheidung' gehören NICHT in diesen Fließtext, sondern separat als offenePunkte: 2-6 kurze, " +
+      "konkrete Stichpunkte (je ein Satz).\n\n" +
       "Zusätzlich: Setze 'ampel' auf GRUEN/GELB/ROT und schreibe ein 1-2-sätziges 'kurzfazit'. Wichtig: Die " +
       "Ampel bewertet NICHT Kauf/Nichtkauf, sondern ausschließlich den Klärungs- und Verhandlungsbedarf vor " +
       "einer Entscheidung (ROT = mehrere KAUFENTSCHEIDEND-Hypothesen mit hohem Risiko und/oder Preis deutlich " +
@@ -356,6 +375,8 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       verhandlungsargumente: marktwert.verhandlungsargumente,
       kaufnebenkostenSchaetzungEur: marktwert.kaufnebenkostenSchaetzungEur,
       cashflow,
+      vergleichsmieteMinEur: finanz.vergleichsmieteMinEur,
+      vergleichsmieteMaxEur: finanz.vergleichsmieteMaxEur,
       opportunitaetskostenText: finanz.opportunitaetskostenText,
       risikoSzenarien: finanz.risikoSzenarien,
       argumenteContra: synthese.argumenteContra,
@@ -364,7 +385,8 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       sanierungsstauMinEur,
       sanierungsstauMaxEur,
       sanierungsfahrplan: synthese.sanierungsfahrplan,
-      gesamtbild: synthese.gesamtbild,
+      gesamtbildText: synthese.gesamtbildText,
+      offenePunkte: synthese.offenePunkte,
       ampel: synthese.ampel,
       kurzfazit: synthese.kurzfazit,
     });
@@ -432,7 +454,9 @@ export async function runImpactPipeline(analysisId: string): Promise<void> {
         "kurze Zusammenfassung, was sich durch die neuen Informationen geändert hat und warum. Achte darauf, " +
         "dass hypothesen[].kostenMinEur/kostenMaxEur, die daraus abgeleiteten sanierungsstauMinEur/MaxEur, die " +
         "cashflow-Zahlen sowie ampel/kurzfazit weiterhin intern konsistent zueinander sind, falls sich durch " +
-        "die neuen Informationen Kostenrahmen oder Risikoeinschätzungen ändern.",
+        "die neuen Informationen Kostenrahmen oder Risikoeinschätzungen ändern. Halte verhandlungsargumente als " +
+        "Liste einzelner Argumente (nicht ein Fließtext), gesamtbildText kurz und ohne die 'offenen Punkte' " +
+        "darin einzubetten (die gehören separat in offenePunkte).",
       messages: [
         {
           role: "user",
