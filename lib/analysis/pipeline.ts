@@ -216,11 +216,7 @@ async function finanzAgent(
       "Instandhaltungsrücklage sowie die Zahlen für den Zinsanstiegs-Stresstest sind bereits deterministisch " +
       "vorberechnet (siehe 'Bereits berechnete Zahlen' unten) – übernimm sie unverändert in deine Texte, rechne " +
       "sie nicht neu und widersprich ihnen nicht. Schätze selbst nur die sonstigen Nebenkosten (Grundsteuer, " +
-      "Gebäudeversicherung u.ä.) sowie vergleichsmieteMinEur/MaxEur (ortsübliche Kaltmiete/Monat für ein " +
-      "vergleichbares Objekt in Wohnfläche und Lage). opportunitaetskostenText ist bewusst KURZ (max. 2 Sätze) " +
-      "und enthält NUR die Einordnung/Interpretation (z.B. was der Unterschied zwischen Kaufen und Mieten für " +
-      "den Vermögensaufbau bedeutet) – wiederhole darin keine Zahlen, die schon als Kacheln angezeigt werden " +
-      "(Annuität, Rücklage, Gesamtbelastung, Vergleichsmiete).\n\n" +
+      "Gebäudeversicherung u.ä.).\n\n" +
       "Erstelle zusätzlich einen Risiko-Stresstest mit 2-3 Szenarien:\n" +
       "1) 'Zinsanstieg bei Anschlussfinanzierung': nutze exakt die vorberechnete Annuität-bei-Zinsanstieg-" +
       "Differenz als deltaMonatlicheBelastungEur (einmaligerBetragMinEur/MaxEur = null). WICHTIG: Das Vorzeichen " +
@@ -295,6 +291,15 @@ async function syntheseAgent(input: {
       "nahelegen würde – die Reihenfolge hat Vorrang vor der sonstigen Preis-Leistungs-Priorisierung. Ausnahme: " +
       "Die bestehende Heizung ist akut ausgefallen/muss sofort ersetzt werden – dann als Übergangslösung " +
       "kennzeichnen.\n\n" +
+      "HARTE REGEL zum individuellen Sanierungsfahrplan (iSFP) und Förderung: Falls ein iSFP Teil des Fahrplans " +
+      "ist (z.B. um den iSFP-Bonus zu sichern), MUSS er der zeitlich ALLERERSTE Schritt sein – vor jeder " +
+      "Bau-/Dämm-/Heizungsmaßnahme, nicht gleichzeitig mit oder nach der ersten Maßnahme. Grund: Der iSFP-Bonus " +
+      "(zusätzliche 5 Prozentpunkte BEG-Förderung) gilt nur für Maßnahmen, die zum Zeitpunkt von deren " +
+      "Antragstellung bereits im iSFP enthalten sind – bei einem später erstellten iSFP entfällt der Bonus für " +
+      "bereits beantragte/begonnene Maßnahmen. Formuliere die Förderangaben in foerderung dabei präzise " +
+      "getrennt: Die BEG-Grundförderung für Einzelmaßnahmen ist auch OHNE iSFP möglich, nur der zusätzliche " +
+      "iSFP-Bonus setzt einen vorher erstellten iSFP voraus – schreibe nicht pauschal 'keine Förderung ohne " +
+      "iSFP'.\n\n" +
       "Jeder Sanierungsschritt braucht zusätzlich voraussichtlicheEnergieklasseNachMassnahme: eine KUMULATIVE " +
       "Hypothese, in welcher Energieeffizienzklasse (A+ bis H) das Gebäude nach dieser Maßnahme UND allen " +
       "vorherigen Schritten voraussichtlich steht (ausgehend von der aktuellen Energieklasse aus den " +
@@ -396,9 +401,6 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       verhandlungsargumente: marktwert.verhandlungsargumente,
       kaufnebenkostenSchaetzungEur: marktwert.kaufnebenkostenSchaetzungEur,
       cashflow,
-      vergleichsmieteMinEur: finanz.vergleichsmieteMinEur,
-      vergleichsmieteMaxEur: finanz.vergleichsmieteMaxEur,
-      opportunitaetskostenText: finanz.opportunitaetskostenText,
       risikoSzenarien: finanz.risikoSzenarien,
       argumenteContra: synthese.argumenteContra,
       argumentePro: synthese.argumentePro,

@@ -197,22 +197,28 @@ function PreiskorridorBar({
   const preisPct = pct(preis);
 
   // Der Angebotspreis kann außerhalb des Korridors liegen – die Einordnung
-  // sagt explizit, ob und um wie viel, statt das nur aus den Positionen auf
-  // dem Zahlenstrahl ablesen zu lassen.
+  // sagt qualitativ, ob (nicht: um wie viel genau), damit das Label kurz
+  // bleibt und nicht aus der Kartenbreite herausläuft.
   const einordnung: { text: string; tone: Tone } =
     preis > max
-      ? { text: `+${formatEur(preis - max)} über Korridor`, tone: "rot" }
+      ? { text: "über Korridor", tone: "rot" }
       : preis < min
-        ? { text: `${formatEur(min - preis)} unter Korridor`, tone: "gruen" }
+        ? { text: "unter Korridor", tone: "gruen" }
         : { text: "im Korridor", tone: "gruen" };
+
+  // Label an den Rändern nicht zentrieren, sonst läuft es dort aus der
+  // Kartenbreite heraus – stattdessen ab 75%/25% am jeweiligen Rand verankern.
+  const labelStyle: React.CSSProperties =
+    preisPct >= 75
+      ? { right: `${100 - preisPct}%` }
+      : preisPct <= 25
+        ? { left: `${preisPct}%` }
+        : { left: `${preisPct}%`, transform: "translateX(-50%)" };
 
   return (
     <div className="mb-6 pt-7">
       <div className="relative">
-        <div
-          className="absolute bottom-full mb-1.5 -translate-x-1/2 text-xs whitespace-nowrap"
-          style={{ left: `${preisPct}%` }}
-        >
+        <div className="absolute bottom-full mb-1.5 text-xs whitespace-nowrap" style={labelStyle}>
           <span className="font-semibold">Angebotspreis {formatEur(preis)}</span>{" "}
           <span className={EINORDNUNG_TEXT_STYLE[einordnung.tone]}>({einordnung.text})</span>
         </div>
@@ -235,51 +241,6 @@ function PreiskorridorBar({
           </span>
         </div>
       </div>
-    </div>
-  );
-}
-
-function KaufenMietenVergleich({
-  kaufenEur,
-  mieteMinEur,
-  mieteMaxEur,
-}: {
-  kaufenEur: number;
-  mieteMinEur: number;
-  mieteMaxEur: number;
-}) {
-  const mieteMitte = (mieteMinEur + mieteMaxEur) / 2;
-  const maxWert = Math.max(kaufenEur, mieteMitte) || 1;
-  const zeilen = [
-    {
-      label: "Kaufen (Gesamtbelastung)",
-      wert: kaufenEur,
-      anzeige: `${formatEur(kaufenEur)}/Monat`,
-      style: "bg-black/70 dark:bg-white/70",
-    },
-    {
-      label: "Vergleichsmiete",
-      wert: mieteMitte,
-      anzeige: `${formatEur(mieteMinEur)}–${formatEur(mieteMaxEur)}/Monat`,
-      style: "bg-black/25 dark:bg-white/25",
-    },
-  ];
-  return (
-    <div className="space-y-2 mb-3">
-      {zeilen.map((z) => (
-        <div key={z.label}>
-          <div className="flex justify-between text-xs text-black/60 dark:text-white/60 mb-1">
-            <span>{z.label}</span>
-            <span className="font-medium text-black dark:text-white">{z.anzeige}</span>
-          </div>
-          <div className="h-2.5 rounded-full bg-black/5 dark:bg-white/10">
-            <div
-              className={`h-2.5 rounded-full ${z.style}`}
-              style={{ width: `${(z.wert / maxWert) * 100}%` }}
-            />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
@@ -441,36 +402,6 @@ export function Report({
         <p className="text-sm">
           Kaufnebenkosten (Schätzung): {formatEur(report.kaufnebenkostenSchaetzungEur)}
         </p>
-      </Section>
-
-      <Section title="Cashflow-Analyse">
-        <div className="grid grid-cols-2 gap-3 mb-5">
-          <Kachel
-            label="Monatliche Annuität"
-            value={formatEur(report.cashflow.monatlicheAnnuitaetEur)}
-          />
-          <Kachel
-            label="Instandhaltungsrücklage"
-            value={formatEur(report.cashflow.instandhaltungsruecklageEur)}
-          />
-          <Kachel
-            label="Sonstige Nebenkosten"
-            value={formatEur(report.cashflow.sonstigeNebenkostenEur)}
-          />
-          <Kachel
-            label="Gesamtbelastung / Monat"
-            value={formatEur(report.cashflow.gesamtbelastungEur)}
-          />
-        </div>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-black/60 dark:text-white/60 mb-2">
-          Kaufen vs. Mieten
-        </h3>
-        <KaufenMietenVergleich
-          kaufenEur={report.cashflow.gesamtbelastungEur}
-          mieteMinEur={report.vergleichsmieteMinEur}
-          mieteMaxEur={report.vergleichsmieteMaxEur}
-        />
-        <p className="text-sm">{report.opportunitaetskostenText}</p>
       </Section>
 
       <Section title="Risiko-Stress-Test">

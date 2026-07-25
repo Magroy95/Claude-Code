@@ -87,12 +87,6 @@ export const analysisReportSchema = z.object({
     sonstigeNebenkostenEur: z.number(),
     gesamtbelastungEur: z.number(),
   }),
-  // Ortsübliche Vergleichsmiete als Zahlenspanne für eine direkte
-  // Kaufen-vs-Mieten-Gegenüberstellung; opportunitaetskostenText bleibt kurz
-  // (Einordnung, keine Wiederholung der bereits angezeigten Zahlen).
-  vergleichsmieteMinEur: z.number(),
-  vergleichsmieteMaxEur: z.number(),
-  opportunitaetskostenText: z.string(),
   risikoSzenarien: z.array(risikoSzenarioSchema).min(1),
   argumenteContra: z.array(argumentSchema).min(1),
   argumentePro: z.array(argumentSchema).min(1),
@@ -141,9 +135,6 @@ export const finanzAgentSchema = z.object({
   // deterministisch berechnet (lib/analysis/finance.ts) und dem Agenten als
   // gegebene Zahlen übergeben; nur die sonstigen Nebenkosten sind Schätzung.
   sonstigeNebenkostenEur: z.number(),
-  vergleichsmieteMinEur: z.number(),
-  vergleichsmieteMaxEur: z.number(),
-  opportunitaetskostenText: z.string(),
   risikoSzenarien: z.array(risikoSzenarioSchema).min(1),
 });
 export type FinanzAgentResult = z.infer<typeof finanzAgentSchema>;
