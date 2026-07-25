@@ -285,6 +285,16 @@ async function syntheseAgent(input: {
       "konditional dazu (z.B. 'bei zweischaligem Mauerwerk mit Hohlraum: günstige Einblasdämmung; falls " +
       "einschalig/massiv: teurere WDVS-/Innendämmung als Alternative einplanen') statt eine Methode pauschal zu " +
       "unterstellen.\n\n" +
+      "HARTE REGEL zur Reihenfolge bei Wärmepumpen-Einbau (Hülle vor Heizung): Ist ein Heizungstausch auf " +
+      "Wärmepumpe Teil des Fahrplans, MUSS er zeitlich NACH den Hüllenmaßnahmen stehen, die den " +
+      "Vorlauftemperaturbedarf senken (mindestens Dach-/Geschossdeckendämmung; bei Klasse E-H in der Regel auch " +
+      "Fenster und Fassade), NICHT davor und NICHT parallel im selben frühen Zeitfenster. Grund: Eine " +
+      "Wärmepumpe in einem ungedämmten Gebäude mit hohem Vorlauftemperaturbedarf läuft ineffizient (schlechter " +
+      "COP, hohe Stromkosten) und ist damit trotz ggf. hoher Förderquote schlechte Preis-Leistung. Verstoße " +
+      "gegen diese Regel auch dann nicht, wenn die reine Kosten-Nutzen-Rechnung den Heizungstausch früher " +
+      "nahelegen würde – die Reihenfolge hat Vorrang vor der sonstigen Preis-Leistungs-Priorisierung. Ausnahme: " +
+      "Die bestehende Heizung ist akut ausgefallen/muss sofort ersetzt werden – dann als Übergangslösung " +
+      "kennzeichnen.\n\n" +
       "Jeder Sanierungsschritt braucht zusätzlich voraussichtlicheEnergieklasseNachMassnahme: eine KUMULATIVE " +
       "Hypothese, in welcher Energieeffizienzklasse (A+ bis H) das Gebäude nach dieser Maßnahme UND allen " +
       "vorherigen Schritten voraussichtlich steht (ausgehend von der aktuellen Energieklasse aus den " +
