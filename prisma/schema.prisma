@@ -1,0 +1,94 @@
+// HauskaufChecker – Datenmodell
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Verkaufsart {
+  MAKLER
+  PRIVAT
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  DONE
+  ERROR
+}
+
+enum AttachmentKind {
+  EXPOSE
+  BESICHTIGUNG_FOTO
+  BESICHTIGUNG_DOKUMENT
+}
+
+// Öffentliche ID hat das Format "HKC-XXXX" und wird in der App (lib/id.ts) erzeugt.
+model Analysis {
+  id           String         @id
+  email        String
+  eigenkapital Int
+  verkaufsart  Verkaufsart
+  freitext     String?
+  status       AnalysisStatus @default(PENDING)
+  errorMessage String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  attachments Attachment[]
+  results     AnalysisResult[]
+  answers     HypothesisAnswer[]
+}
+
+model Attachment {
+  id         String         @id @default(uuid())
+  analysisId String
+  analysis   Analysis       @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  kind       AttachmentKind
+  storageKey String
+  fileName   String
+  mimeType   String
+  createdAt  DateTime       @default(now())
+
+  answerAttachments HypothesisAnswerAttachment[]
+}
+
+model AnalysisResult {
+  id            String   @id @default(uuid())
+  analysisId    String
+  analysis      Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  version       Int
+  payload       Json
+  changeSummary String?
+  createdAt     DateTime @default(now())
+
+  @@unique([analysisId, version])
+}
+
+model HypothesisAnswer {
+  id            String   @id @default(uuid())
+  analysisId    String
+  analysis      Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  hypothesisKey String
+  question      String
+  answerText    String?
+  createdAt     DateTime @default(now())
+
+  attachments HypothesisAnswerAttachment[]
+
+  @@unique([analysisId, hypothesisKey])
+}
+
+model HypothesisAnswerAttachment {
+  id                 String           @id @default(uuid())
+  hypothesisAnswerId String
+  hypothesisAnswer   HypothesisAnswer @relation(fields: [hypothesisAnswerId], references: [id], onDelete: Cascade)
+  attachmentId       String
+  attachment         Attachment       @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+
+  @@unique([hypothesisAnswerId, attachmentId])
+}
