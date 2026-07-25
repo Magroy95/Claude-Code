@@ -48,6 +48,7 @@ export const sanierungsSchrittSchema = z.object({
   // Fließtext.
   voraussichtlicheEnergieklasseNachMassnahme: z.string(),
 });
+export type SanierungsSchritt = z.infer<typeof sanierungsSchrittSchema>;
 
 export const risikoSzenarioSchema = z.object({
   titel: z.string(),
@@ -99,7 +100,7 @@ export const analysisReportSchema = z.object({
   // Kurzer Fließtext-Kern; die "wichtigsten offenen Punkte" stehen separat
   // als Liste in offenePunkte statt am Ende des Fließtexts eingebettet.
   gesamtbildText: z.string(),
-  offenePunkte: z.array(z.string()).min(2).max(6),
+  offenePunkte: z.array(z.string()).min(1).max(6),
   // Kurzfassung für eine spätere Free-Preview (Ampel + Einordnung), der
   // ausführliche Report bleibt der kostenpflichtige Teil.
   ampel: ampelStufe,
@@ -144,8 +145,17 @@ export const syntheseAgentSchema = z.object({
   argumentePro: z.array(argumentSchema).min(1),
   sanierungsfahrplan: z.array(sanierungsSchrittSchema).min(1),
   gesamtbildText: z.string(),
-  offenePunkte: z.array(z.string()).min(2).max(6),
+  offenePunkte: z.array(z.string()).min(1).max(6),
   ampel: ampelStufe,
   kurzfazit: z.string(),
 });
 export type SyntheseAgentResult = z.infer<typeof syntheseAgentSchema>;
+
+// Zweite, unabhängige Prüfinstanz (Vier-Augen-Prinzip) für den vom
+// syntheseAgent erstellten Sanierungsfahrplan. Gibt ihn unverändert oder
+// korrigiert zurück und listet vorgenommene Korrekturen auf.
+export const sanierungsfahrplanPruefungSchema = z.object({
+  sanierungsfahrplan: z.array(sanierungsSchrittSchema).min(1),
+  aenderungen: z.array(z.string()),
+});
+export type SanierungsfahrplanPruefungResult = z.infer<typeof sanierungsfahrplanPruefungSchema>;

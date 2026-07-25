@@ -9,6 +9,7 @@ import {
   risikoAgentSchema,
   finanzAgentSchema,
   syntheseAgentSchema,
+  sanierungsfahrplanPruefungSchema,
   analysisReportSchema,
   enrichmentImpactSchema,
   type AnalysisReport,
@@ -17,6 +18,7 @@ import {
   type RisikoAgentResult,
   type FinanzAgentResult,
   type Hypothese,
+  type SanierungsSchritt,
 } from "./schema";
 import {
   berechneFinanzierungsKennzahlen,
@@ -331,6 +333,61 @@ async function syntheseAgent(input: {
   return message.parsed_output;
 }
 
+// Zweite, unabhängige Prüfinstanz (Vier-Augen-Prinzip): läuft nach jeder
+// Sanierungsfahrplan-Erstellung, damit sequenz- und plausibilitätsbezogene
+// Fehler (z.B. Wärmepumpe vor Dämmung, iSFP nach statt vor der ersten
+// Maßnahme) nicht auf einen einzelnen Agenten-Durchlauf angewiesen bleiben.
+async function sanierungsfahrplanPruefungAgent(
+  objektdaten: Objektdaten,
+  hypothesen: Hypothese[],
+  sanierungsfahrplan: SanierungsSchritt[],
+) {
+  const message = await anthropic.messages.parse({
+    model: ANALYSIS_MODEL,
+    max_tokens: 8192,
+    system:
+      PERSONA_PREAMBLE +
+      "\n\nDu bist in diesem Schritt eine ZWEITE, unabhängige Prüfinstanz (Vier-Augen-Prinzip) für einen " +
+      "Sanierungsfahrplan, den ein anderer Agent bereits erstellt hat. Prüfe ihn auf technische und " +
+      "ökonomische Plausibilität und korrigiere ihn bei Bedarf, ohne die Grundstruktur unnötig zu verändern. " +
+      "Prüfe konkret:\n" +
+      "1. Reihenfolge Hülle vor Heizung: Ein Wärmepumpen-Tausch darf NICHT vor den Hüllenmaßnahmen stehen, die " +
+      "den Vorlauftemperaturbedarf senken (mindestens Dach-/Geschossdeckendämmung; bei Energieklasse E-H in " +
+      "der Regel auch Fenster/Fassade) – außer die bestehende Heizung ist akut ausgefallen (dann als " +
+      "Übergangslösung kennzeichnen).\n" +
+      "2. iSFP zuerst: Falls ein individueller Sanierungsfahrplan (iSFP) enthalten ist, muss er der zeitlich " +
+      "erste Schritt sein, da der iSFP-Bonus nur für danach beantragte Maßnahmen gilt.\n" +
+      "3. Monotone Energieklassen-Progression: voraussichtlicheEnergieklasseNachMassnahme darf sich über die " +
+      "Schritte hinweg nie verschlechtern und muss zu einer realistischen Zielklasse führen (kein Sprung von " +
+      "z.B. H direkt auf A+ durch eine einzelne günstige Maßnahme).\n" +
+      "4. Kostenrahmen plausibel: Kostenrahmen müssen zur Maßnahme, zur Wohnfläche und zur Baualtersklasse " +
+      "passen (kein Nulltarif für große Maßnahmen, keine absurd hohen Beträge für kleine Einzelmaßnahmen).\n" +
+      "5. Förderangaben grounded: Fördersätze/-logik müssen mit den allgemein bekannten BEG-Förderregeln " +
+      "konsistent sein (Grundförderung für Einzelmaßnahmen auch ohne iSFP möglich, iSFP-Bonus nur mit vorher " +
+      "erstelltem iSFP, keine erfundenen Fördertöpfe).\n" +
+      "6. Konsistenz mit Mauerwerksaufbau: Falls eine der mitgelieferten Hypothesen die Mauerwerksart " +
+      "(ein-/zweischalig, Hohlraum) als offene Frage kennzeichnet, muss der Fassaden-Dämmschritt weiterhin " +
+      "konditional formuliert sein (Einblasdämmung bei Hohlraum vs. WDVS/Innendämmung sonst), nicht eine " +
+      "Methode pauschal unterstellen.\n\n" +
+      "Ist der Fahrplan bereits plausibel, gib ihn UNVERÄNDERT zurück und aenderungen = []. Sind Korrekturen " +
+      "nötig, gib den vollständigen korrigierten Fahrplan zurück (alle Schritte, nicht nur die geänderten) und " +
+      "liste in aenderungen knapp auf (je ein Satz), was geändert wurde und warum.",
+    messages: [
+      {
+        role: "user",
+        content:
+          `Objektdaten: ${JSON.stringify(objektdaten)}\n` +
+          `Relevante Hypothesen (Substanz/Energie, zur Einordnung): ` +
+          `${JSON.stringify(hypothesen.filter((h) => h.kategorie !== "STRATEGISCH"))}\n\n` +
+          `Zu prüfender Sanierungsfahrplan: ${JSON.stringify(sanierungsfahrplan)}`,
+      },
+    ],
+    output_config: { format: zodOutputFormat(sanierungsfahrplanPruefungSchema), effort: "high" },
+  });
+  if (!message.parsed_output) throw new Error("Plausibilitätsprüfung des Sanierungsfahrplans fehlgeschlagen");
+  return message.parsed_output;
+}
+
 function summiereSanierungsstau(hypothesen: Hypothese[]): {
   sanierungsstauMinEur: number;
   sanierungsstauMaxEur: number;
@@ -384,6 +441,18 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     );
     const synthese = await syntheseAgent({ objektdaten, marktwert, risiko, finanz });
 
+    const pruefung = await sanierungsfahrplanPruefungAgent(
+      objektdaten,
+      risiko.hypothesen,
+      synthese.sanierungsfahrplan,
+    );
+    if (pruefung.aenderungen.length > 0) {
+      console.warn(
+        `[HauskaufChecker] Sanierungsfahrplan-Korrekturen bei Analyse ${analysisId}:`,
+        pruefung.aenderungen,
+      );
+    }
+
     const cashflow = {
       monatlicheAnnuitaetEur: kennzahlen.monatlicheAnnuitaetEur,
       instandhaltungsruecklageEur,
@@ -407,7 +476,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       hypothesen: risiko.hypothesen,
       sanierungsstauMinEur,
       sanierungsstauMaxEur,
-      sanierungsfahrplan: synthese.sanierungsfahrplan,
+      sanierungsfahrplan: pruefung.sanierungsfahrplan,
       gesamtbildText: synthese.gesamtbildText,
       offenePunkte: synthese.offenePunkte,
       ampel: synthese.ampel,
@@ -500,12 +569,26 @@ export async function runImpactPipeline(analysisId: string): Promise<void> {
     });
     if (!message.parsed_output) throw new Error("Anreicherungs-Analyse fehlgeschlagen");
 
+    const updatedReport = message.parsed_output.updatedReport;
+    const pruefung = await sanierungsfahrplanPruefungAgent(
+      updatedReport.objektdaten,
+      updatedReport.hypothesen,
+      updatedReport.sanierungsfahrplan,
+    );
+    if (pruefung.aenderungen.length > 0) {
+      console.warn(
+        `[HauskaufChecker] Sanierungsfahrplan-Korrekturen bei Anreicherung ${analysisId}:`,
+        pruefung.aenderungen,
+      );
+      updatedReport.sanierungsfahrplan = pruefung.sanierungsfahrplan;
+    }
+
     await prisma.$transaction([
       prisma.analysisResult.create({
         data: {
           analysisId,
           version: latestResult.version + 1,
-          payload: message.parsed_output.updatedReport,
+          payload: updatedReport,
           changeSummary: message.parsed_output.changeSummary,
         },
       }),
