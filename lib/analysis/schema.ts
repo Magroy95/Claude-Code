@@ -42,16 +42,28 @@ export const sanierungsSchrittSchema = z.object({
   massnahme: z.string(),
   kostenrahmenText: z.string(),
   foerderung: z.string(),
+  // Kumulative Hypothese zur Energieeffizienzklasse NACH dieser Maßnahme
+  // (inkl. aller vorherigen Schritte) – relevant für Käufer und Banken
+  // (Beleihung/Anschlussfinanzierung), daher als eigene Spalte statt nur im
+  // Fließtext.
+  voraussichtlicheEnergieklasseNachMassnahme: z.string(),
 });
 
 export const risikoSzenarioSchema = z.object({
   titel: z.string(),
   beschreibung: z.string(),
   auswirkungText: z.string(),
-  // Deterministisch vorberechnete monatliche Mehrbelastung (EUR) für Szenarien,
-  // die auf den vorgegebenen Finanzkennzahlen beruhen (z.B. Zinsanstieg,
-  // Sanierungskredit). Null, wenn das Szenario keine klare monatliche Delta hat.
+  // Deterministisch vorberechnete monatliche Mehrbelastung (EUR) für Szenarien
+  // mit einer echten laufenden Kostenänderung (z.B. Zinsanstieg bei der
+  // Anschlussfinanzierung). Null, wenn das Szenario keine klare monatliche
+  // Delta hat.
   deltaMonatlicheBelastungEur: z.number().nullable(),
+  // Einmaliger/kumulierter Betrag (EUR) für Szenarien, die eine Kostensumme
+  // statt einer laufenden Monatsrate sind (z.B. Sanierungsstau als Summe aus
+  // dem Sanierungsfahrplan, ohne die Annahme einer neuen Kreditfinanzierung).
+  // Beide null, wenn das Szenario keinen klaren Betrag hat.
+  einmaligerBetragMinEur: z.number().nullable(),
+  einmaligerBetragMaxEur: z.number().nullable(),
 });
 
 export const argumentSchema = z.object({

@@ -21,9 +21,6 @@ import {
 import {
   berechneFinanzierungsKennzahlen,
   instandhaltungsruecklage,
-  monatlicheAnnuitaet,
-  STANDARD_TILGUNG,
-  STANDARD_ZINS,
   type FinanzierungsKennzahlen,
 } from "./finance";
 
@@ -207,7 +204,8 @@ async function finanzAgent(
   marktwert: MarktwertAgentResult,
   kennzahlen: FinanzierungsKennzahlen,
   instandhaltungsruecklageEur: number,
-  sanierungsKreditAnnuitaetEur: number,
+  sanierungsstauMinEur: number,
+  sanierungsstauMaxEur: number,
 ): Promise<FinanzAgentResult> {
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
@@ -215,20 +213,29 @@ async function finanzAgent(
     system:
       PERSONA_PREAMBLE +
       "\n\nDu bist in diesem Schritt der Investor mit Fokus auf Finanzierung. Die monatliche Annuität, die " +
-      "Instandhaltungsrücklage sowie die Zahlen für den Zinsanstiegs- und den Sanierungskredit-Stresstest sind " +
-      "bereits deterministisch vorberechnet (siehe 'Bereits berechnete Zahlen' unten) – übernimm sie unverändert " +
-      "in deine Texte, rechne sie nicht neu und widersprich ihnen nicht. Schätze selbst nur die sonstigen " +
-      "Nebenkosten (Grundsteuer, Gebäudeversicherung u.ä.) sowie vergleichsmieteMinEur/MaxEur (ortsübliche " +
-      "Kaltmiete/Monat für ein vergleichbares Objekt in Wohnfläche und Lage). opportunitaetskostenText ist " +
-      "bewusst KURZ (max. 2 Sätze) und enthält NUR die Einordnung/Interpretation (z.B. was der Unterschied " +
-      "zwischen Kaufen und Mieten für den Vermögensaufbau bedeutet) – wiederhole darin keine Zahlen, die schon " +
-      "als Kacheln angezeigt werden (Annuität, Rücklage, Gesamtbelastung, Vergleichsmiete).\n\n" +
-      "Erstelle zusätzlich einen Risiko-Stresstest mit 2-3 Szenarien: nutze für 'Zinsanstieg bei " +
-      "Anschlussfinanzierung' exakt die vorberechnete Annuität-bei-Zinsanstieg-Differenz als " +
-      "deltaMonatlicheBelastungEur, für ein Szenario zur energetischen Sanierungspflicht die vorberechnete " +
-      "Sanierungskredit-Annuität als deltaMonatlicheBelastungEur, und ergänze 1 weiteres Szenario (z.B. " +
-      "Wertverlust) ohne klare monatliche Delta (dort deltaMonatlicheBelastungEur = null). Rechne eher " +
-      "konservativ als beschönigend.",
+      "Instandhaltungsrücklage sowie die Zahlen für den Zinsanstiegs-Stresstest sind bereits deterministisch " +
+      "vorberechnet (siehe 'Bereits berechnete Zahlen' unten) – übernimm sie unverändert in deine Texte, rechne " +
+      "sie nicht neu und widersprich ihnen nicht. Schätze selbst nur die sonstigen Nebenkosten (Grundsteuer, " +
+      "Gebäudeversicherung u.ä.) sowie vergleichsmieteMinEur/MaxEur (ortsübliche Kaltmiete/Monat für ein " +
+      "vergleichbares Objekt in Wohnfläche und Lage). opportunitaetskostenText ist bewusst KURZ (max. 2 Sätze) " +
+      "und enthält NUR die Einordnung/Interpretation (z.B. was der Unterschied zwischen Kaufen und Mieten für " +
+      "den Vermögensaufbau bedeutet) – wiederhole darin keine Zahlen, die schon als Kacheln angezeigt werden " +
+      "(Annuität, Rücklage, Gesamtbelastung, Vergleichsmiete).\n\n" +
+      "Erstelle zusätzlich einen Risiko-Stresstest mit 2-3 Szenarien:\n" +
+      "1) 'Zinsanstieg bei Anschlussfinanzierung': nutze exakt die vorberechnete Annuität-bei-Zinsanstieg-" +
+      "Differenz als deltaMonatlicheBelastungEur (einmaligerBetragMinEur/MaxEur = null). WICHTIG: Das Vorzeichen " +
+      "ist bereits eindeutig festgelegt – schreibe im Text den vorzeichenrichtigen Wert aus (z.B. 'sinkt um rund " +
+      "43 EUR/Monat' bei negativem Wert, 'steigt um rund X EUR/Monat' bei positivem). Schreibe NIEMALS '+/-' oder " +
+      "'ca. +/-X' – das ist keine Unsicherheit, sondern ein konkret berechneter Wert. Falls der Wert nahe null " +
+      "oder negativ ist, erkläre kurz warum (die Restschuld ist durch die Tilgung über 10 Jahre bereits so weit " +
+      "gesunken, dass selbst ein höherer Zinssatz die Rate kaum oder nicht erhöht).\n" +
+      "2) Ein Szenario zur energetischen Sanierungspflicht: Das ist KEIN Finanzierungsszenario – unterstelle " +
+      "KEINEN neuen Kredit und KEINE zusätzliche Monatsrate dafür (deltaMonatlicheBelastungEur = null für dieses " +
+      "Szenario). Nutze stattdessen den vorgegebenen geschätzten Sanierungsstau (Summe aus dem Sanierungsfahrplan) " +
+      "als einmaligen Betrag: einmaligerBetragMinEur/MaxEur = genau die vorgegebene Sanierungsstau-Spanne.\n" +
+      "3) 1 weiteres Szenario (z.B. Wertverlust) ohne klare monatliche Delta (deltaMonatlicheBelastungEur = " +
+      "null); setze einmaligerBetragMinEur/MaxEur nur, wenn ein konkreter einmaliger Betrag zum Szenario passt, " +
+      "sonst ebenfalls null. Rechne eher konservativ als beschönigend.",
     messages: [
       {
         role: "user",
@@ -243,9 +250,9 @@ async function finanzAgent(
           `Instandhaltungsrücklage: ${instandhaltungsruecklageEur} EUR\n` +
           `Restschuld nach 10 Jahren: ${kennzahlen.restschuldNach10JahrenEur} EUR\n` +
           `Annuität bei Zinsanstieg auf 6,5%: ${kennzahlen.annuitaetBeiZinsanstiegEur} EUR ` +
-          `(Mehrbelastung: +${kennzahlen.deltaBeiZinsanstiegEur} EUR/Monat)\n` +
-          `Monatliche Annuität eines Sanierungskredits über den mittleren geschätzten Sanierungsstau: ` +
-          `+${sanierungsKreditAnnuitaetEur} EUR/Monat`,
+          `(vorzeichenrichtige Differenz: ${kennzahlen.deltaBeiZinsanstiegEur} EUR/Monat)\n` +
+          `Geschätzter Sanierungsstau (Summe aus dem Sanierungsfahrplan, als einmaliger Betrag zu verwenden, ` +
+          `NICHT in eine neue Kreditrate umrechnen): ${sanierungsstauMinEur}-${sanierungsstauMaxEur} EUR`,
       },
     ],
     output_config: { format: zodOutputFormat(finanzAgentSchema), effort: "high" },
@@ -278,6 +285,14 @@ async function syntheseAgent(input: {
       "konditional dazu (z.B. 'bei zweischaligem Mauerwerk mit Hohlraum: günstige Einblasdämmung; falls " +
       "einschalig/massiv: teurere WDVS-/Innendämmung als Alternative einplanen') statt eine Methode pauschal zu " +
       "unterstellen.\n\n" +
+      "Jeder Sanierungsschritt braucht zusätzlich voraussichtlicheEnergieklasseNachMassnahme: eine KUMULATIVE " +
+      "Hypothese, in welcher Energieeffizienzklasse (A+ bis H) das Gebäude nach dieser Maßnahme UND allen " +
+      "vorherigen Schritten voraussichtlich steht (ausgehend von der aktuellen Energieklasse aus den " +
+      "Objektdaten). Das ist eine wichtige Information für Käufer und finanzierende Banken (Beleihung/" +
+      "Anschlusskonditionen hängen an der Effizienzklasse), formuliere es trotzdem als Hypothese, z.B. 'H → " +
+      "vermutlich F' oder bei mehreren vorherigen Schritten 'vermutlich D' (nicht erneut 'H → D' wiederholen, " +
+      "wenn der Sprung schon in Vorschritten passiert ist). Beim letzten Schritt sollte die Zielklasse erkennbar " +
+      "sein, die mit dem strategischen 10-Jahres-Ziel zusammenpasst.\n\n" +
       "Gesamtbild: gesamtbildText ist ein KURZER Fließtext (3-5 Sätze) für den zentralen Gesamteindruck – ohne " +
       "die Zahlen zu wiederholen, die schon in Kacheln/anderen Sections stehen. Die 'wichtigsten offenen Punkte " +
       "vor der Kaufentscheidung' gehören NICHT in diesen Fließtext, sondern separat als offenePunkte: 2-6 kurze, " +
@@ -342,11 +357,6 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       kaufnebenkostenEur: marktwert.kaufnebenkostenSchaetzungEur,
       eigenkapitalEur: analysis.eigenkapital,
     });
-    const sanierungsKreditAnnuitaetEur = monatlicheAnnuitaet({
-      darlehenEur: Math.round((sanierungsstauMinEur + sanierungsstauMaxEur) / 2),
-      zinsSatz: STANDARD_ZINS,
-      tilgungSatz: STANDARD_TILGUNG,
-    });
 
     const finanz = await finanzAgent(
       objektdaten,
@@ -354,7 +364,8 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       marktwert,
       kennzahlen,
       instandhaltungsruecklageEur,
-      sanierungsKreditAnnuitaetEur,
+      sanierungsstauMinEur,
+      sanierungsstauMaxEur,
     );
     const synthese = await syntheseAgent({ objektdaten, marktwert, risiko, finanz });
 
@@ -456,7 +467,11 @@ export async function runImpactPipeline(analysisId: string): Promise<void> {
         "cashflow-Zahlen sowie ampel/kurzfazit weiterhin intern konsistent zueinander sind, falls sich durch " +
         "die neuen Informationen Kostenrahmen oder Risikoeinschätzungen ändern. Halte verhandlungsargumente als " +
         "Liste einzelner Argumente (nicht ein Fließtext), gesamtbildText kurz und ohne die 'offenen Punkte' " +
-        "darin einzubetten (die gehören separat in offenePunkte).",
+        "darin einzubetten (die gehören separat in offenePunkte). Für risikoSzenarien: deltaMonatlicheBelastungEur " +
+        "nur für echte laufende Mehrkosten (z.B. Zinsanstieg), einmaligerBetragMinEur/MaxEur für Kostensummen " +
+        "(z.B. Sanierungsstau) – nie eine neue Kreditrate für den Sanierungsstau unterstellen. Für " +
+        "sanierungsfahrplan[].voraussichtlicheEnergieklasseNachMassnahme: kumulative Hypothese je Schritt " +
+        "beibehalten bzw. an neue Erkenntnisse anpassen.",
       messages: [
         {
           role: "user",

@@ -81,6 +81,13 @@ function energieklasseTone(klasse: string | null): Tone {
   return ENERGIEKLASSE_TONE[klasse.toUpperCase()] ?? "neutral";
 }
 
+// Der Sanierungsfahrplan-Text ("H → vermutlich F") enthält die Zielklasse als
+// letzten A-H-Treffer im Freitext statt als eigenes striktes Enum-Feld.
+function letzteEnergieklasse(text: string): string | null {
+  const treffer = text.match(/\b[A-H]\+?\b/g);
+  return treffer ? treffer[treffer.length - 1] : null;
+}
+
 function preisTone(angebotspreis: number, korridorMax: number): Tone {
   if (angebotspreis <= korridorMax) return "gruen";
   if (angebotspreis <= korridorMax * 1.1) return "gelb";
@@ -475,7 +482,7 @@ export function Report({
             >
               <div className="flex items-start justify-between gap-3 mb-1">
                 <div className="font-medium">{s.titel}</div>
-                {s.deltaMonatlicheBelastungEur != null && (
+                {s.deltaMonatlicheBelastungEur != null ? (
                   <span
                     className={`shrink-0 rounded px-2 py-0.5 text-xs font-medium ${
                       s.deltaMonatlicheBelastungEur >= 0
@@ -486,6 +493,13 @@ export function Report({
                     {s.deltaMonatlicheBelastungEur >= 0 ? "+" : ""}
                     {formatEur(s.deltaMonatlicheBelastungEur)}/Monat
                   </span>
+                ) : (
+                  s.einmaligerBetragMinEur != null &&
+                  s.einmaligerBetragMaxEur != null && (
+                    <span className="shrink-0 rounded px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">
+                      {formatEur(s.einmaligerBetragMinEur)}–{formatEur(s.einmaligerBetragMaxEur)} einmalig
+                    </span>
+                  )
                 )}
               </div>
               <p className="text-sm text-black/70 dark:text-white/70 mb-1">{s.beschreibung}</p>
@@ -554,24 +568,42 @@ export function Report({
 
       <Section title="Vorschlag: Sanierungsfahrplan">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
+          <table className="w-full text-sm border-collapse table-fixed">
+            <colgroup>
+              <col className="w-[13%]" />
+              <col className="w-[32%]" />
+              <col className="w-[15%]" />
+              <col className="w-[25%]" />
+              <col className="w-[15%]" />
+            </colgroup>
             <thead>
               <tr className="text-left border-b border-black/10 dark:border-white/15">
                 <th className="py-2 pr-3">Zeitpunkt</th>
                 <th className="py-2 pr-3">Maßnahme</th>
                 <th className="py-2 pr-3">Kostenrahmen</th>
-                <th className="py-2">Förderung</th>
+                <th className="py-2 pr-3">Förderung</th>
+                <th className="py-2">Energieklasse danach</th>
               </tr>
             </thead>
             <tbody>
-              {report.sanierungsfahrplan.map((step, i) => (
-                <tr key={i} className="border-b border-black/5 dark:border-white/10 align-top">
-                  <td className="py-2 pr-3 whitespace-nowrap">{step.zeitpunkt}</td>
-                  <td className="py-2 pr-3">{step.massnahme}</td>
-                  <td className="py-2 pr-3 whitespace-nowrap">{step.kostenrahmenText}</td>
-                  <td className="py-2">{step.foerderung}</td>
-                </tr>
-              ))}
+              {report.sanierungsfahrplan.map((step, i) => {
+                const klasse = letzteEnergieklasse(step.voraussichtlicheEnergieklasseNachMassnahme);
+                return (
+                  <tr key={i} className="border-b border-black/5 dark:border-white/10 align-top">
+                    <td className="py-2 pr-3 break-words">{step.zeitpunkt}</td>
+                    <td className="py-2 pr-3 break-words">{step.massnahme}</td>
+                    <td className="py-2 pr-3 break-words">{step.kostenrahmenText}</td>
+                    <td className="py-2 pr-3 break-words">{step.foerderung}</td>
+                    <td className="py-2 break-words">
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${TONE_STYLE[energieklasseTone(klasse)]}`}
+                      >
+                        {step.voraussichtlicheEnergieklasseNachMassnahme}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
