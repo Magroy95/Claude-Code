@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Weekly small/mid-cap value + quality + dividend-growth stock screener.
+Weekly quality + dividend-growth stock screener (market cap >= $300M).
 
 Data sources (all free, no API key required):
   - SEC bulk ticker/exchange list  (stage 0: build the market universe)
@@ -20,7 +20,12 @@ Screening criteria:
       offices) -- "gross margin" isn't a meaningful concept for these
       business models
   Stage 2 (final, per-candidate; requires >= 5 years of 10-K history):
-    - Market cap                 $300M - $2B (small/mid cap)
+    - Market cap                 >= $300M (no upper bound -- a full-market
+                                  diagnostic showed the other 7 criteria
+                                  combined select almost exclusively for
+                                  companies well above the original $2B
+                                  ceiling, so it was dropped rather than
+                                  raised to an arbitrary new number)
     - Gross margin (5Y average)  >= 40% (>= 50% flagged as premium)
     - Gross margin decline       <= 15% relative, oldest vs. most recent of the 5Y window
     - Dividend yield             >= 2%
@@ -58,7 +63,7 @@ EXCLUDED_SIC_RANGE = (6000, 6799)
 HISTORY_YEARS = 5
 
 MIN_MARKET_CAP = 300_000_000
-MAX_MARKET_CAP = 2_000_000_000
+MAX_MARKET_CAP = None  # no upper bound -- see docstring
 
 MIN_GROSS_MARGIN = 0.40
 PREMIUM_GROSS_MARGIN = 0.50
@@ -469,7 +474,9 @@ def evaluate_candidate(candidate, sec_headers, sec_limiter, yahoo_limiter, count
     adj_dps_now = dps_now / split_adjustment_factor(dps_now_date, splits)
 
     market_cap = price * adj_shares
-    if not (MIN_MARKET_CAP <= market_cap <= MAX_MARKET_CAP):
+    if market_cap < MIN_MARKET_CAP:
+        return None
+    if MAX_MARKET_CAP is not None and market_cap > MAX_MARKET_CAP:
         return None
 
     current_pe = price / adj_eps_now
