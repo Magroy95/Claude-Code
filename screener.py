@@ -15,6 +15,10 @@ Screening criteria:
     - Listed on Nasdaq or NYSE, one ticker per company (drops preferred
       shares / warrants / notes that share a CIK with their common stock --
       their price isn't tied 1:1 to per-common-share EPS)
+  Stage 1.5 (cheap, one small submissions.json call per candidate):
+    - Excludes SIC 6000-6799 (banks, insurers, REITs, holding/investment
+      offices) -- "gross margin" isn't a meaningful concept for these
+      business models
   Stage 2 (final, per-candidate; requires >= 5 years of 10-K history):
     - Market cap                 $300M - $2B (small/mid cap)
     - Gross margin (5Y average)  >= 40% (>= 50% flagged as premium)
@@ -23,8 +27,8 @@ Screening criteria:
     - P/E (KGV)                  < 25 (< 15 flagged as premium)
                                   OR current P/E <= 1.15x its own 5Y-average P/E
     - Payout ratio               <= 50% (dividends per share / EPS)
-    - Dividend growth            >= 5%/year (CAGR) over the last 5 years
-    - EPS growth                 >= 25% over the last 3 years
+    - Dividend growth            >= 3%/year (CAGR) over the last 5 years
+    - EPS growth                 >= 15% over the last 3 years
 """
 import argparse
 import json
@@ -37,10 +41,19 @@ import urllib.request
 from datetime import date, datetime, timedelta, timezone
 
 SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers_exchange.json"
+SEC_SUBMISSIONS_URL = "https://data.sec.gov/submissions/CIK{cik:010d}.json"
 SEC_FACTS_URL = "https://data.sec.gov/api/xbrl/companyfacts/CIK{cik:010d}.json"
 YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 
 STAGE1_EXCHANGES = {"Nasdaq", "NYSE"}
+
+# SIC division H (Finance, Insurance, and Real Estate): banks, insurers,
+# REITs, holding/investment offices. "Gross margin" isn't a meaningful
+# concept for these business models (revenue/cost tags that happen to
+# exist produce numbers like a "bank's 82% gross margin" that don't mean
+# what they'd mean for a manufacturer or retailer) -- excluded up front,
+# before the expensive per-candidate SEC/Yahoo calls.
+EXCLUDED_SIC_RANGE = (6000, 6799)
 
 HISTORY_YEARS = 5
 
@@ -58,8 +71,8 @@ PREMIUM_PE = 15.0
 MAX_PE_VS_5Y_AVG = 0.15
 
 MAX_PAYOUT_RATIO = 0.50
-MIN_DIVIDEND_CAGR_5Y = 0.05
-MIN_EPS_GROWTH_3Y = 0.25
+MIN_DIVIDEND_CAGR_5Y = 0.03
+MIN_EPS_GROWTH_3Y = 0.15
 
 SEC_MAX_REQ_PER_SEC = 8
 YAHOO_MAX_REQ_PER_SEC = 5
@@ -172,6 +185,50 @@ def stage1_filter(universe):
         if current is None or _ticker_rank(c["ticker"]) < _ticker_rank(current["ticker"]):
             best_by_cik[c["cik"]] = c
     return list(best_by_cik.values())
+
+
+def is_financial_sector(sic):
+    if sic is None:
+        return False
+    try:
+        sic = int(sic)
+    except (TypeError, ValueError):
+        return False
+    return EXCLUDED_SIC_RANGE[0] <= sic <= EXCLUDED_SIC_RANGE[1]
+
+
+def fetch_sic(candidate, sec_headers, limiter, counter):
+    data = http_get_json(
+        SEC_SUBMISSIONS_URL.format(cik=candidate["cik"]), sec_headers, limiter, counter
+    )
+    if not data:
+        return None
+    return data.get("sic")
+
+
+def stage1_5_exclude_financials(candidates, sec_headers, counter, max_workers):
+    """Drop banks/insurers/REITs/holding companies (SIC 6000-6799) before
+    the expensive per-candidate companyfacts+price fetch -- cheaper (one
+    small submissions.json call) and avoids gross-margin false positives
+    from applying a manufacturing/retail metric to a financial business."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    limiter = RateLimiter(SEC_MAX_REQ_PER_SEC)
+    survivors = []
+    with ThreadPoolExecutor(max_workers=max_workers) as pool:
+        futures = {
+            pool.submit(fetch_sic, c, sec_headers, limiter, counter): c
+            for c in candidates
+        }
+        for future in as_completed(futures):
+            c = futures[future]
+            try:
+                sic = future.result()
+            except Exception:
+                continue
+            if not is_financial_sector(sic):
+                survivors.append(c)
+    return survivors
 
 
 def annual_series(facts_taxonomy, concept_names, max_years=HISTORY_YEARS + 2):
@@ -552,8 +609,12 @@ def main():
         stage1 = stage1[: args.limit]
     print(f"Stage 1 candidates (Nasdaq/NYSE listed): {len(stage1)}")
 
+    print("Stage 1.5: excluding banks/insurers/REITs (SIC 6000-6799)...")
+    stage1_5 = stage1_5_exclude_financials(stage1, sec_headers, counter, MAX_WORKERS)
+    print(f"Stage 1.5 candidates (non-financial): {len(stage1_5)}")
+
     print("Stage 2: evaluating financial criteria (this may take a while)...")
-    hits = stage2_screen(stage1, sec_headers, counter, MAX_WORKERS)
+    hits = stage2_screen(stage1_5, sec_headers, counter, MAX_WORKERS)
     hits.sort(key=lambda h: h["pe_ratio"])
     print(f"Final hits: {len(hits)}")
 
@@ -563,6 +624,7 @@ def main():
 
     print("\n=== Summary ===")
     print(f"Stage 1 candidates: {len(stage1)}")
+    print(f"Stage 1.5 candidates (non-financial): {len(stage1_5)}")
     print(f"Final hits:         {len(hits)}")
     print(f"New watchlist entries: {len(new_entries)}")
     print(f"Total API calls:    {counter.count}")
