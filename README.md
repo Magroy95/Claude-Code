@@ -35,13 +35,14 @@ hochgeladenen Exposés – als Prototyp.
    Makler-/Privat-Verkauf, Freitext zu Besonderheiten/Mängeln.
 2. Im Hintergrund läuft eine Multi-Agenten-Pipeline (`lib/analysis/pipeline.ts`)
    über die Anthropic Messages API: Extraktion → Marktwert → Risiko/Substanz →
-   Finanzen → Synthese → Vier-Augen-Prüfung des Sanierungsfahrplans. Die
-   `/analyse/[id]`-Seite pollt den Status und zeigt das Ergebnis, sobald es
-   fertig ist. Jeder erfolgreich abgeschlossene Schritt wird als Checkpoint
-   in `Analysis.pipelineState` persistiert (siehe unten, "Zuverlässigkeit");
-   schlägt ein Schritt dauerhaft fehl, kann die Analyse über den
-   "Erneut versuchen"-Button auf der Fehlerseite ab genau diesem Schritt
-   fortgesetzt werden, statt komplett neu zu beginnen.
+   Finanzen → Synthese → Vier-Augen-Prüfung des Sanierungsfahrplans →
+   Vier-Augen-Prüfung des GESAMTEN Reports. Die `/analyse/[id]`-Seite pollt
+   den Status und zeigt das Ergebnis, sobald es fertig ist. Jeder erfolgreich
+   abgeschlossene Schritt wird als Checkpoint in `Analysis.pipelineState`
+   persistiert (siehe unten, "Zuverlässigkeit"); schlägt ein Schritt
+   dauerhaft fehl, kann die Analyse über den "Erneut versuchen"-Button auf
+   der Fehlerseite ab genau diesem Schritt fortgesetzt werden, statt
+   komplett neu zu beginnen.
 3. **Ergebnis** (`/analyse/[id]`): strukturierter Report inkl. PDF-Download
    (`/api/analyses/[id]/pdf`, gerendert per Playwright/Chromium).
 4. **Anreicherung nach Besichtigung** (`/analyse/[id]/anreichern`): Antworten
@@ -102,6 +103,23 @@ Für einen ersten öffentlichen Test ohne Terminal:
   Aufruf von `runAnalysisPipeline` (über `POST /api/analyses/[id]/retry`,
   ausgelöst durch den "Erneut versuchen"-Button) setzt exakt beim
   fehlgeschlagenen Schritt fort.
+- **Vier-Augen-Prüfung für den gesamten Report** (`gesamtPruefungAgent` in
+  `lib/analysis/pipeline.ts`): Läuft zusätzlich zur bestehenden, engeren
+  Sanierungsfahrplan-Prüfung als letzter Schritt vor dem Speichern. Anders
+  als eine reine Konsistenz-Prüfung (siehe unten) ist das ein eigener
+  LLM-Aufruf mit eigenem Fokus, der gezielt nach den Fehlern sucht, die erst
+  beim Zusammenfügen unabhängig erstellter Abschnitte entstehen: Passt die
+  Ampel wirklich zu den eigenen Hypothesen? Widerspricht ein Pro-Argument
+  einer Hypothese? Ist irgendwo ein verbotener Begriff aus den Sprachregeln
+  durchgerutscht? Stimmen die im Marktwert-Text genannten Zahlen exakt mit
+  dem Preiskorridor überein? Objektdaten, Preiskorridor, Kaufnebenkosten,
+  Hypothesen-Kostenrahmen, Sanierungsstau, Cashflow und der
+  Sanierungsfahrplan selbst sind dabei bewusst gesperrt (nur als Kontext
+  mitgegeben), damit diese Prüfung keine bereits korrekten Zahlen verwässern
+  kann – korrigierbar sind ausschließlich Texte, Argumente, Risikoszenario-
+  Beschreibungen, offene Punkte und die Ampel/Kurzfazit-Einordnung. Läuft
+  identisch auch nach der Anreicherung (`runImpactPipeline`), damit die
+  Qualität auch nach der Besichtigung ohne manuelle Prüfung erhalten bleibt.
 - **Numerische Konsistenz-Guards** (`lib/analysis/consistency.ts`): Prüft
   deterministisch Dinge, die Zod allein nicht abdeckt – z.B. dass ein
   Preiskorridor- oder Kostenrahmen-Minimum nie über dem Maximum liegt, oder

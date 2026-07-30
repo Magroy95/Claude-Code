@@ -11,6 +11,7 @@ import {
   finanzAgentSchema,
   syntheseAgentSchema,
   sanierungsfahrplanPruefungSchema,
+  gesamtPruefungSchema,
   analysisReportSchema,
   enrichmentImpactSchema,
   type AnalysisReport,
@@ -20,6 +21,7 @@ import {
   type FinanzAgentResult,
   type SyntheseAgentResult,
   type SanierungsfahrplanPruefungResult,
+  type GesamtPruefungResult,
   type Hypothese,
   type SanierungsSchritt,
 } from "./schema";
@@ -427,6 +429,95 @@ async function sanierungsfahrplanPruefungAgent(
   return message.parsed_output;
 }
 
+// Abschließende, unabhängige Vier-Augen-Prüfung über den GESAMTEN Report –
+// nicht derselbe Agent, der einen Abschnitt noch einmal liest, sondern ein
+// eigener Prompt mit eigenem Fokus auf genau die Fehler, die entstehen,
+// wenn mehrere unabhängige Agenten-Ergebnisse zu einem Dokument
+// zusammengefügt werden, ohne dass jemand das Gesamtbild noch einmal
+// gegenprüft (z.B. eine Ampel, die nicht zu den eigenen Hypothesen passt,
+// ein Pro-Argument, das einer Hypothese widerspricht, oder ein
+// Sprachregel-Verstoß, der nur in einem von sechs Agenten-Outputs steckt).
+// Objektdaten, Preiskorridor, Kaufnebenkosten, Hypothesen-Kostenrahmen,
+// Sanierungsstau, Cashflow und der Sanierungsfahrplan sind an dieser Stelle
+// bereits deterministisch berechnet bzw. eigens geprüft und werden dem
+// Modell nur als feststehender Kontext mitgegeben, nicht zur Veränderung.
+async function gesamtPruefungAgent(report: AnalysisReport): Promise<GesamtPruefungResult> {
+  const message = await anthropic.messages.parse({
+    model: ANALYSIS_MODEL,
+    max_tokens: 8192,
+    system:
+      PERSONA_PREAMBLE +
+      "\n\nDu bist die abschließende, unabhängige Vier-Augen-Prüfung für den GESAMTEN Report. Du hast keinen der " +
+      "Abschnitte selbst geschrieben und liest ihn deshalb nicht wohlwollend, sondern suchst gezielt nach " +
+      "Widersprüchen und Fehlern, die entstehen, wenn unabhängig erstellte Abschnitte zusammengefügt werden.\n\n" +
+      "Objektdaten, der Preiskorridor (orientierungswertMinEur/MaxEur), die Kaufnebenkosten, die " +
+      "Hypothesen-Kostenrahmen, der daraus abgeleitete Sanierungsstau, alle Cashflow-Zahlen und der " +
+      "Sanierungsfahrplan sind bereits deterministisch berechnet bzw. durch eine eigene Prüfinstanz abgesichert – " +
+      "das ist feststehender Kontext für dich, verändere und wiederhole diese Zahlen NICHT.\n\n" +
+      "Prüfe konkret:\n" +
+      "1. Ampel-Konsistenz: ROT erfordert mindestens eine KAUFENTSCHEIDEND-Hypothese mit Risiko HOCH und/oder " +
+      "einen Angebotspreis spürbar über der oberen Korridorgrenze; GELB einzelne relevante, aber im Rahmen " +
+      "liegende Punkte; GRUEN wenige Auffälligkeiten und Preis im/unter Korridor. Passt die mitgelieferte Ampel " +
+      "nicht zu den mitgelieferten Hypothesen/Zahlen, korrigiere ampel und kurzfazit entsprechend.\n" +
+      "2. Sprachregel-Verstoß-Scan: Durchsuche marktEinschaetzung, marktwertText, alle Argumente, " +
+      "gesamtbildText und kurzfazit auf die weiter oben genannten verbotenen Begriffe/Tatsachenbehauptungen " +
+      "(z.B. 'Gutachten', 'ist sicher', 'empfehle den Kauf', ein Preisurteil ohne Hypothesen-Framing) und " +
+      "formuliere jede Fundstelle ins vorgegebene Hypothesen-Framing um.\n" +
+      "3. Pro/Contra-Widerspruchsfreiheit: Kein Pro-Argument darf einem Contra-Argument oder einer " +
+      "mitgelieferten Hypothese faktisch widersprechen; jedes Argument muss durch Objektdaten oder Hypothesen " +
+      "gedeckt sein, nicht frei erfunden.\n" +
+      "4. Zahlen-Text-Konsistenz: Zahlen, die in marktwertText genannt werden (z.B. 'X EUR über Korridor'), " +
+      "müssen exakt zum mitgelieferten Preiskorridor und Angebotspreis passen. Beschreibungen in " +
+      "risikoSzenarien dürfen den mitgelieferten deltaMonatlicheBelastungEur/einmaligerBetrag-Werten nicht " +
+      "widersprechen – diese Zahlen selbst nicht verändern, nur Formulierungen bei Bedarf präzisieren.\n" +
+      "5. offenePunkte-Redundanz: Keine offenePunkte-Zeile darf eine Prüffrage aus den Hypothesen wortgleich " +
+      "wiederholen – zusammenfassen oder Duplikate entfernen.\n" +
+      "6. Marktdaten-Zitation: Wurde dir im marktwertText eine amtliche Marktdaten-Referenz mitgeteilt, muss " +
+      "sie erkennbar benannt sein; wurde explizit das Fehlen einer amtlichen Grundlage vermerkt, darf das nicht " +
+      "verschwiegen/entfernt werden.\n\n" +
+      "Ist bereits alles konsistent, gib alle Felder UNVERÄNDERT zurück und aenderungen = []. Sind Korrekturen " +
+      "nötig, gib ALLE Felder vollständig zurück (auch die unveränderten, nicht nur Ausschnitte) und liste in " +
+      "aenderungen knapp auf (je ein Satz), was geändert wurde und warum.",
+    messages: [
+      {
+        role: "user",
+        content:
+          "Vollständiger Report zur Prüfung (Objektdaten, Preiskorridor, Kaufnebenkosten, Hypothesen-" +
+          "Kostenrahmen, Sanierungsstau, Cashflow und Sanierungsfahrplan sind feststehend, nicht verändern):\n" +
+          JSON.stringify(report),
+      },
+    ],
+    output_config: { format: zodOutputFormat(gesamtPruefungSchema), effort: "high" },
+  });
+  if (!message.parsed_output) throw new Error("Gesamt-Prüfung des Reports fehlgeschlagen");
+  return message.parsed_output;
+}
+
+// Führt das Ergebnis der Gesamt-Prüfung mit dem bereits zusammengesetzten
+// Report zusammen und validiert das Ergebnis erneut deterministisch (siehe
+// consistency.ts) – als letzte Absicherung, falls die Prüfinstanz selbst
+// versehentlich eine neue Inkonsistenz einführen sollte.
+function wendeGesamtPruefungAn(
+  report: AnalysisReport,
+  pruefung: GesamtPruefungResult,
+): AnalysisReport {
+  const finalReport = analysisReportSchema.parse({
+    ...report,
+    marktEinschaetzung: pruefung.marktEinschaetzung,
+    marktwertText: pruefung.marktwertText,
+    verhandlungsargumente: pruefung.verhandlungsargumente,
+    risikoSzenarien: pruefung.risikoSzenarien,
+    argumenteContra: pruefung.argumenteContra,
+    argumentePro: pruefung.argumentePro,
+    gesamtbildText: pruefung.gesamtbildText,
+    offenePunkte: pruefung.offenePunkte,
+    ampel: pruefung.ampel,
+    kurzfazit: pruefung.kurzfazit,
+  });
+  validateReport(finalReport);
+  return finalReport;
+}
+
 function summiereSanierungsstau(hypothesen: Hypothese[]): {
   sanierungsstauMinEur: number;
   sanierungsstauMaxEur: number;
@@ -461,6 +552,7 @@ interface PipelineCheckpoint {
   finanz?: FinanzAgentResult;
   synthese?: SyntheseAgentResult;
   pruefung?: SanierungsfahrplanPruefungResult;
+  gesamtPruefung?: GesamtPruefungResult;
 }
 
 async function ladeCheckpoint(analysisId: string): Promise<PipelineCheckpoint> {
@@ -630,9 +722,26 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     });
     validateReport(report);
 
+    if (!checkpoint.gesamtPruefung) {
+      checkpoint.gesamtPruefung = await withRetry(async () => {
+        const result = await gesamtPruefungAgent(report);
+        wendeGesamtPruefungAn(report, result); // wirft bei Inkonsistenz -> löst Retry aus
+        return result;
+      }, AGENT_RETRY_OPTIONS);
+      await speichereCheckpointSchritt(analysisId, "gesamtPruefung", checkpoint.gesamtPruefung);
+    }
+    const gesamtPruefung = checkpoint.gesamtPruefung;
+    if (gesamtPruefung.aenderungen.length > 0) {
+      console.warn(
+        `[HauskaufChecker] Gesamt-Report-Korrekturen bei Analyse ${analysisId}:`,
+        gesamtPruefung.aenderungen,
+      );
+    }
+    const finalReport = wendeGesamtPruefungAn(report, gesamtPruefung);
+
     await prisma.$transaction([
       prisma.analysisResult.create({
-        data: { analysisId, version: 1, payload: report },
+        data: { analysisId, version: 1, payload: finalReport },
       }),
       prisma.analysis.update({
         where: { id: analysisId },
@@ -721,10 +830,14 @@ export async function runImpactPipeline(analysisId: string): Promise<void> {
     if (!message.parsed_output) throw new Error("Anreicherungs-Analyse fehlgeschlagen");
 
     const updatedReport = message.parsed_output.updatedReport;
-    const pruefung = await sanierungsfahrplanPruefungAgent(
-      updatedReport.objektdaten,
-      updatedReport.hypothesen,
-      updatedReport.sanierungsfahrplan,
+    const pruefung = await withRetry(
+      () =>
+        sanierungsfahrplanPruefungAgent(
+          updatedReport.objektdaten,
+          updatedReport.hypothesen,
+          updatedReport.sanierungsfahrplan,
+        ),
+      AGENT_RETRY_OPTIONS,
     );
     if (pruefung.aenderungen.length > 0) {
       console.warn(
@@ -733,13 +846,27 @@ export async function runImpactPipeline(analysisId: string): Promise<void> {
       );
       updatedReport.sanierungsfahrplan = pruefung.sanierungsfahrplan;
     }
+    validateReport(updatedReport);
+
+    const gesamtPruefung = await withRetry(async () => {
+      const result = await gesamtPruefungAgent(updatedReport);
+      wendeGesamtPruefungAn(updatedReport, result); // wirft bei Inkonsistenz -> löst Retry aus
+      return result;
+    }, AGENT_RETRY_OPTIONS);
+    if (gesamtPruefung.aenderungen.length > 0) {
+      console.warn(
+        `[HauskaufChecker] Gesamt-Report-Korrekturen bei Anreicherung ${analysisId}:`,
+        gesamtPruefung.aenderungen,
+      );
+    }
+    const finalReport = wendeGesamtPruefungAn(updatedReport, gesamtPruefung);
 
     await prisma.$transaction([
       prisma.analysisResult.create({
         data: {
           analysisId,
           version: latestResult.version + 1,
-          payload: updatedReport,
+          payload: finalReport,
           changeSummary: message.parsed_output.changeSummary,
         },
       }),

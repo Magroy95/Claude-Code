@@ -159,3 +159,28 @@ export const sanierungsfahrplanPruefungSchema = z.object({
   aenderungen: z.array(z.string()),
 });
 export type SanierungsfahrplanPruefungResult = z.infer<typeof sanierungsfahrplanPruefungSchema>;
+
+// Abschließende, unabhängige Vier-Augen-Prüfung über den GESAMTEN
+// zusammengesetzten Report (nicht nur den Sanierungsfahrplan). Umfasst
+// bewusst nur die Felder, die tatsächlich Interpretations-/Formulierungs-
+// spielraum haben (Texte, Argumente, Ampel) – Objektdaten, der
+// Preiskorridor, die Kaufnebenkosten, die Hypothesen-Kostenrahmen, der
+// daraus abgeleitete Sanierungsstau, die Cashflow-Zahlen und der
+// Sanierungsfahrplan sind bereits deterministisch berechnet bzw. durch eine
+// eigene Prüfinstanz abgesichert und werden hier bewusst NICHT zur
+// Veränderung freigegeben, damit diese Prüfung keine bereits korrekten
+// Zahlen verwässern kann.
+export const gesamtPruefungSchema = z.object({
+  marktEinschaetzung: z.string(),
+  marktwertText: z.string(),
+  verhandlungsargumente: z.array(argumentSchema).min(2).max(5),
+  risikoSzenarien: z.array(risikoSzenarioSchema).min(1),
+  argumenteContra: z.array(argumentSchema).min(1),
+  argumentePro: z.array(argumentSchema).min(1),
+  gesamtbildText: z.string(),
+  offenePunkte: z.array(z.string()).min(1).max(6),
+  ampel: ampelStufe,
+  kurzfazit: z.string(),
+  aenderungen: z.array(z.string()),
+});
+export type GesamtPruefungResult = z.infer<typeof gesamtPruefungSchema>;
