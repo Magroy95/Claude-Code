@@ -36,6 +36,11 @@ model Analysis {
   freitext     String?
   status       AnalysisStatus @default(PENDING)
   errorMessage String?
+  // Zwischenergebnisse der Analyse-Pipeline (je Agent-Schritt), damit ein
+  // Fehlschlag nicht die gesamte Analyse von vorn beginnen muss, sondern ab
+  // dem zuletzt erfolgreichen Schritt fortgesetzt werden kann. Wird bei
+  // erfolgreichem Abschluss der Pipeline wieder geleert.
+  pipelineState Json?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 

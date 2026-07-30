@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/prisma";
 import { analysisReportSchema } from "@/lib/analysis/schema";
 import { Report } from "@/app/components/Report";
 import { ProcessingScreen } from "@/app/components/ProcessingScreen";
+import { RetryAnalysisButton } from "@/app/components/RetryAnalysisButton";
 
 export default async function AnalysePage({
   params,
@@ -37,6 +38,7 @@ export default async function AnalysePage({
         <p className="text-sm text-black/60 dark:text-white/60">
           {analysis.errorMessage ?? "Es ist ein unbekannter Fehler aufgetreten."}
         </p>
+        <RetryAnalysisButton analysisId={id} />
       </div>
     );
   }

@@ -2,6 +2,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type Anthropic from "@anthropic-ai/sdk";
 import { anthropic, ANALYSIS_MODEL } from "@/lib/anthropic";
 import { prisma } from "@/lib/db/prisma";
+import { Prisma } from "@/app/generated/prisma/client";
 import { storage } from "@/lib/storage";
 import {
   objektdatenSchema,
@@ -17,6 +18,8 @@ import {
   type MarktwertAgentResult,
   type RisikoAgentResult,
   type FinanzAgentResult,
+  type SyntheseAgentResult,
+  type SanierungsfahrplanPruefungResult,
   type Hypothese,
   type SanierungsSchritt,
 } from "./schema";
@@ -25,6 +28,9 @@ import {
   instandhaltungsruecklage,
   type FinanzierungsKennzahlen,
 } from "./finance";
+import { withRetry } from "./retry";
+import { validateMarktwert, validateRisiko, validateFinanz, validateReport } from "./consistency";
+import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
 
 const DISCLAIMER_HINWEIS =
   "Alle Angaben sind unverbindliche, KI-gestützte Hypothesen auf Basis der bereitgestellten Unterlagen. " +
@@ -127,9 +133,40 @@ async function extraktionAgent(
   return message.parsed_output;
 }
 
+function marktdatenKontextBlock(marktdaten: MarktdatenErgebnis): string {
+  const teile: string[] = [];
+  if (marktdaten.bodenrichtwert) {
+    const b = marktdaten.bodenrichtwert;
+    teile.push(
+      `Amtlicher Bodenrichtwert (${b.quelle}, Stichtag ${b.stichtag}): ${b.bodenrichtwertEurProQm} EUR/m² ` +
+        `Grundstücksfläche. Verankere deinen Orientierungswert-Korridor erkennbar an dieser amtlichen Referenz ` +
+        `und benenne die Quelle im marktwertText (z.B. 'auf Basis des amtlichen Bodenrichtwerts von ...').`,
+    );
+  } else {
+    teile.push(
+      "Für diese Lage liegt KEINE amtliche Bodenrichtwert-Referenz vor (Bundesland noch nicht angebunden oder " +
+        "Lage nicht eindeutig zuordenbar). Formuliere den Korridor deshalb spürbar vorsichtiger/breiter als bei " +
+        "vorliegender amtlicher Referenz und weise im marktwertText explizit darauf hin, dass hierfür keine " +
+        "amtliche Grundlage verfügbar war (z.B. 'Ohne amtliche Bodenrichtwert-Referenz für diese Lage ist dieser " +
+        "Korridor mit größerer Unsicherheit behaftet als üblich').",
+    );
+  }
+  const veraenderung = marktdaten.preisindex?.veraenderungVorjahrProzent;
+  if (marktdaten.preisindex && veraenderung !== null && veraenderung !== undefined) {
+    const p = marktdaten.preisindex;
+    teile.push(
+      `Bundesweiter Häuserpreisindex (${p.quelle}, ${p.jahr}): ${veraenderung >= 0 ? "+" : ""}` +
+        `${veraenderung}% ggü. Vorjahr. Nutze das nur als groben Trendhinweis zur allgemeinen ` +
+        `Marktrichtung, nicht als Ersatz für die lagespezifische Einordnung.`,
+    );
+  }
+  return teile.join("\n");
+}
+
 async function marktwertAgent(
   objektdaten: Objektdaten,
   verkaufsart: string,
+  marktdaten: MarktdatenErgebnis,
 ): Promise<MarktwertAgentResult> {
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
@@ -142,7 +179,9 @@ async function marktwertAgent(
       "Für verhandlungsargumente: 2-4 EIGENSTÄNDIGE Argumente als Liste, NICHT ein einziger durchnummerierter " +
       "Fließtext. Jedes Argument braucht einen kurzen titel (3-6 Wörter) und einen text (1-3 Sätze, " +
       "zahlenbasiert, z.B. konkreter Kostenrahmen oder Preisabschlag). Jedes Argument muss für sich allein " +
-      "verständlich sein, ohne die anderen gelesen zu haben.",
+      "verständlich sein, ohne die anderen gelesen zu haben.\n\n" +
+      "Externe Marktdaten-Referenz für diese Analyse:\n" +
+      marktdatenKontextBlock(marktdaten),
     messages: [
       {
         role: "user",
@@ -408,6 +447,59 @@ async function loadExposeContentBlock(analysisId: string) {
   return exposeContentBlock(buffer, attachment.mimeType);
 }
 
+// Zwischenstand der Pipeline, je erfolgreich abgeschlossenem Agenten-Schritt
+// in Analysis.pipelineState persistiert. Ermöglicht es, nach einem
+// Fehlschlag (z.B. Schritt 4 von 6 schlägt dauerhaft fehl) beim nächsten
+// Versuch ab dem zuletzt erfolgreichen Schritt fortzusetzen, statt bereits
+// bezahlte/erfolgreiche LLM-Aufrufe wegzuwerfen und ganz von vorn zu
+// beginnen.
+interface PipelineCheckpoint {
+  objektdaten?: Objektdaten;
+  marktdaten?: MarktdatenErgebnis;
+  marktwert?: MarktwertAgentResult;
+  risiko?: RisikoAgentResult;
+  finanz?: FinanzAgentResult;
+  synthese?: SyntheseAgentResult;
+  pruefung?: SanierungsfahrplanPruefungResult;
+}
+
+async function ladeCheckpoint(analysisId: string): Promise<PipelineCheckpoint> {
+  const analysis = await prisma.analysis.findUniqueOrThrow({
+    where: { id: analysisId },
+    select: { pipelineState: true },
+  });
+  return (analysis.pipelineState as PipelineCheckpoint | null) ?? {};
+}
+
+async function speichereCheckpointSchritt<K extends keyof PipelineCheckpoint>(
+  analysisId: string,
+  schritt: K,
+  wert: PipelineCheckpoint[K],
+): Promise<void> {
+  const bisher = await ladeCheckpoint(analysisId);
+  const aktualisiert: PipelineCheckpoint = { ...bisher, [schritt]: wert };
+  await prisma.analysis.update({
+    where: { id: analysisId },
+    data: { pipelineState: aktualisiert as unknown as Prisma.InputJsonValue },
+  });
+}
+
+// Retry-Parameter für die Agenten-Schritte: bis zu 3 Versuche mit
+// exponentiellem Backoff (1s, 2s), sowohl für transiente API-Fehler als
+// auch für ConsistencyError (siehe consistency.ts) – ein strukturell
+// widersprüchliches Ergebnis wird damit einfach noch einmal beim Modell
+// angefragt, bevor die ganze Analyse als fehlgeschlagen gilt.
+const AGENT_RETRY_OPTIONS = {
+  maxAttempts: 3,
+  baseDelayMs: 1000,
+  onRetry: (attempt: number, error: unknown) => {
+    console.warn(
+      `[HauskaufChecker] Agenten-Schritt Versuch ${attempt} fehlgeschlagen, wiederhole:`,
+      error instanceof Error ? error.message : error,
+    );
+  },
+};
+
 export async function runAnalysisPipeline(analysisId: string): Promise<void> {
   await prisma.analysis.update({
     where: { id: analysisId },
@@ -416,11 +508,46 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
 
   try {
     const analysis = await prisma.analysis.findUniqueOrThrow({ where: { id: analysisId } });
-    const expose = await loadExposeContentBlock(analysisId);
+    const checkpoint = await ladeCheckpoint(analysisId);
 
-    const objektdaten = await extraktionAgent(expose, analysis.freitext);
-    const marktwert = await marktwertAgent(objektdaten, analysis.verkaufsart);
-    const risiko = await risikoAgent(objektdaten, analysis.freitext);
+    if (!checkpoint.objektdaten) {
+      const expose = await loadExposeContentBlock(analysisId);
+      checkpoint.objektdaten = await withRetry(
+        () => extraktionAgent(expose, analysis.freitext),
+        AGENT_RETRY_OPTIONS,
+      );
+      await speichereCheckpointSchritt(analysisId, "objektdaten", checkpoint.objektdaten);
+    }
+    const objektdaten = checkpoint.objektdaten;
+
+    if (!checkpoint.marktdaten) {
+      // Externe Marktdaten-Quellen degradieren bereits intern auf `null`
+      // bei jedem Fehler (siehe lib/analysis/marktdaten) – hier kein Retry
+      // nötig, ein Fehlschlag ist kein Pipeline-Fehler.
+      checkpoint.marktdaten = await holeMarktdaten(objektdaten.adresseOderLage);
+      await speichereCheckpointSchritt(analysisId, "marktdaten", checkpoint.marktdaten);
+    }
+    const marktdaten = checkpoint.marktdaten;
+
+    if (!checkpoint.marktwert) {
+      checkpoint.marktwert = await withRetry(async () => {
+        const result = await marktwertAgent(objektdaten, analysis.verkaufsart, marktdaten);
+        validateMarktwert(result);
+        return result;
+      }, AGENT_RETRY_OPTIONS);
+      await speichereCheckpointSchritt(analysisId, "marktwert", checkpoint.marktwert);
+    }
+    const marktwert = checkpoint.marktwert;
+
+    if (!checkpoint.risiko) {
+      checkpoint.risiko = await withRetry(async () => {
+        const result = await risikoAgent(objektdaten, analysis.freitext);
+        validateRisiko(result);
+        return result;
+      }, AGENT_RETRY_OPTIONS);
+      await speichereCheckpointSchritt(analysisId, "risiko", checkpoint.risiko);
+    }
+    const risiko = checkpoint.risiko;
 
     const { sanierungsstauMinEur, sanierungsstauMaxEur } = summiereSanierungsstau(risiko.hypothesen);
     const instandhaltungsruecklageEur = instandhaltungsruecklage(objektdaten.wohnflaecheQm);
@@ -430,22 +557,41 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       eigenkapitalEur: analysis.eigenkapital,
     });
 
-    const finanz = await finanzAgent(
-      objektdaten,
-      analysis.eigenkapital,
-      marktwert,
-      kennzahlen,
-      instandhaltungsruecklageEur,
-      sanierungsstauMinEur,
-      sanierungsstauMaxEur,
-    );
-    const synthese = await syntheseAgent({ objektdaten, marktwert, risiko, finanz });
+    if (!checkpoint.finanz) {
+      checkpoint.finanz = await withRetry(async () => {
+        const result = await finanzAgent(
+          objektdaten,
+          analysis.eigenkapital,
+          marktwert,
+          kennzahlen,
+          instandhaltungsruecklageEur,
+          sanierungsstauMinEur,
+          sanierungsstauMaxEur,
+        );
+        validateFinanz(result);
+        return result;
+      }, AGENT_RETRY_OPTIONS);
+      await speichereCheckpointSchritt(analysisId, "finanz", checkpoint.finanz);
+    }
+    const finanz = checkpoint.finanz;
 
-    const pruefung = await sanierungsfahrplanPruefungAgent(
-      objektdaten,
-      risiko.hypothesen,
-      synthese.sanierungsfahrplan,
-    );
+    if (!checkpoint.synthese) {
+      checkpoint.synthese = await withRetry(
+        () => syntheseAgent({ objektdaten, marktwert, risiko, finanz }),
+        AGENT_RETRY_OPTIONS,
+      );
+      await speichereCheckpointSchritt(analysisId, "synthese", checkpoint.synthese);
+    }
+    const synthese = checkpoint.synthese;
+
+    if (!checkpoint.pruefung) {
+      checkpoint.pruefung = await withRetry(
+        () => sanierungsfahrplanPruefungAgent(objektdaten, risiko.hypothesen, synthese.sanierungsfahrplan),
+        AGENT_RETRY_OPTIONS,
+      );
+      await speichereCheckpointSchritt(analysisId, "pruefung", checkpoint.pruefung);
+    }
+    const pruefung = checkpoint.pruefung;
     if (pruefung.aenderungen.length > 0) {
       console.warn(
         `[HauskaufChecker] Sanierungsfahrplan-Korrekturen bei Analyse ${analysisId}:`,
@@ -482,6 +628,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       ampel: synthese.ampel,
       kurzfazit: synthese.kurzfazit,
     });
+    validateReport(report);
 
     await prisma.$transaction([
       prisma.analysisResult.create({
@@ -489,7 +636,11 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       }),
       prisma.analysis.update({
         where: { id: analysisId },
-        data: { status: "DONE" },
+        // Checkpoint wird bei Erfolg geleert: eine spätere Anreicherung
+        // (runImpactPipeline) beginnt bewusst wieder komplett neu und soll
+        // nicht versehentlich einen alten Zwischenstand dieser Analyse
+        // wiederverwenden.
+        data: { status: "DONE", pipelineState: Prisma.JsonNull },
       }),
     ]);
   } catch (error) {

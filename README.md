@@ -35,8 +35,13 @@ hochgeladenen Exposés – als Prototyp.
    Makler-/Privat-Verkauf, Freitext zu Besonderheiten/Mängeln.
 2. Im Hintergrund läuft eine Multi-Agenten-Pipeline (`lib/analysis/pipeline.ts`)
    über die Anthropic Messages API: Extraktion → Marktwert → Risiko/Substanz →
-   Finanzen → Synthese. Die `/analyse/[id]`-Seite pollt den Status und zeigt
-   das Ergebnis, sobald es fertig ist.
+   Finanzen → Synthese → Vier-Augen-Prüfung des Sanierungsfahrplans. Die
+   `/analyse/[id]`-Seite pollt den Status und zeigt das Ergebnis, sobald es
+   fertig ist. Jeder erfolgreich abgeschlossene Schritt wird als Checkpoint
+   in `Analysis.pipelineState` persistiert (siehe unten, "Zuverlässigkeit");
+   schlägt ein Schritt dauerhaft fehl, kann die Analyse über den
+   "Erneut versuchen"-Button auf der Fehlerseite ab genau diesem Schritt
+   fortgesetzt werden, statt komplett neu zu beginnen.
 3. **Ergebnis** (`/analyse/[id]`): strukturierter Report inkl. PDF-Download
    (`/api/analyses/[id]/pdf`, gerendert per Playwright/Chromium).
 4. **Anreicherung nach Besichtigung** (`/analyse/[id]/anreichern`): Antworten
@@ -85,6 +90,52 @@ Für einen ersten öffentlichen Test ohne Terminal:
   Ordner bei jedem Funktionsaufruf zurückgesetzt – hochgeladene Exposés
   würden verloren gehen. Das muss vor einem echten Live-Test noch auf einen
   S3/R2-kompatiblen Adapter umgestellt werden (siehe `lib/storage/`).
+
+## Zuverlässigkeit der Analyse-Pipeline
+
+- **Retry + Checkpointing**: Jeder Agenten-Schritt läuft über `withRetry`
+  (`lib/analysis/retry.ts`, bis zu 3 Versuche mit exponentiellem Backoff) und
+  wird bei Erfolg sofort in `Analysis.pipelineState` zwischengespeichert
+  (`lib/analysis/pipeline.ts`). Schlägt ein Schritt nach allen Versuchen
+  weiterhin fehl, geht die Analyse auf `ERROR`, aber die bereits
+  abgeschlossenen (und bezahlten) Schritte bleiben erhalten. Ein erneuter
+  Aufruf von `runAnalysisPipeline` (über `POST /api/analyses/[id]/retry`,
+  ausgelöst durch den "Erneut versuchen"-Button) setzt exakt beim
+  fehlgeschlagenen Schritt fort.
+- **Numerische Konsistenz-Guards** (`lib/analysis/consistency.ts`): Prüft
+  deterministisch Dinge, die Zod allein nicht abdeckt – z.B. dass ein
+  Preiskorridor- oder Kostenrahmen-Minimum nie über dem Maximum liegt, oder
+  dass Hypothesen-Keys eindeutig sind. Ein Verstoß wirft `ConsistencyError`,
+  was denselben Agenten-Schritt (über `withRetry`) einfach erneut anfragt,
+  statt einen inkonsistenten Report auszuliefern.
+- **Marktdaten-Grounding** (`lib/analysis/marktdaten/`): Der marktwertAgent
+  bekommt zusätzlich zwei öffentliche, fachlich anerkannte Referenzen
+  mitgegeben, falls verfügbar – den amtlichen Bodenrichtwert des
+  Gutachterausschusses (aktuell nur Niedersachsen implementiert) und den
+  Häuserpreisindex des Statistischen Bundesamts (Destatis). Liegt keine
+  amtliche Referenz vor, wird der Agent angewiesen, seinen Korridor spürbar
+  vorsichtiger zu formulieren und das Fehlen explizit zu benennen, statt es
+  zu verschweigen. Beide Quellen degradieren bei jedem Fehler (Timeout,
+  falsches Format, fehlende Zugangsdaten) auf `null`, statt die Analyse zu
+  blockieren.
+
+  **Marktdaten-Quellen verifizieren (vor Live-Betrieb):** Diese Anbindung
+  wurde in einer Sandbox ohne Internetzugriff zu Drittanbieter-Hosts gebaut
+  (die Egress-Policy dieser Umgebung blockiert unbekannte Hosts). Vor dem
+  Live-Gang bitte einmal mit einer bekannten Adresse in Niedersachsen
+  gegenprüfen:
+  - `lib/analysis/marktdaten/bodenrichtwerteNiedersachsen.ts`: WFS-Endpunkt,
+    Layer-Name (`brw:Bodenrichtwerte`) und Feldnamen (`brw`, `stag`) gegen
+    den tatsächlichen LGLN-Dienst verifizieren.
+  - `lib/analysis/marktdaten/destatis.ts`: kostenloses GENESIS-Online-Konto
+    anlegen, Zugangsdaten in `DESTATIS_GENESIS_USERNAME`/`_PASSWORD` eintragen
+    und die Tabellen-Kennung (`DESTATIS_TABELLE_HAEUSERPREISINDEX`, Default
+    ist ein Platzhalter) gegen den echten Katalog prüfen.
+  - Beide Adapter sind bewusst fail-safe: Ein falscher Endpunkt führt zu
+    `null` (keine zusätzliche Referenz), nicht zu einem Analyse-Fehler.
+  - Weitere Bundesländer für Bodenrichtwerte sind nicht implementiert
+    (eigener Gutachterausschuss/Dienst je Land) – `holeMarktdaten` liefert
+    dafür bewusst `bodenrichtwert: null`.
 
 ## Wichtige Hinweise
 
