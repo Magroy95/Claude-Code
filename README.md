@@ -43,6 +43,49 @@ hochgeladenen Exposés – als Prototyp.
    auf die offenen Prüffragen inkl. Foto-/Dokument-Upload erzeugen eine neue,
    versionierte Report-Version mit Änderungs-Zusammenfassung.
 
+## Domain & SEO-Grundeinstellungen
+
+Titel, Beschreibung, Keywords und die Basis-URL für Sitemap/Metadata/OG-Bild
+liegen zentral in `lib/site-config.ts`. Sobald eine echte Domain feststeht:
+
+1. `url` in `lib/site-config.ts` anpassen (oder die Umgebungsvariable
+   `NEXT_PUBLIC_SITE_URL` setzen – hat Vorrang).
+2. Beim jeweiligen Hoster (siehe unten) dieselbe Domain als Custom Domain
+   hinterlegen.
+
+Sitemap (`/sitemap.xml`) und `robots.txt` werden automatisch aus dieser
+Konfiguration generiert; die Analyse-Ergebnisseiten (`/analyse/[id]`) sind
+darin bewusst von der Indexierung ausgeschlossen, da sie personenbezogene
+Objektdaten einzelner Nutzer enthalten.
+
+## Veröffentlichen auf Netlify
+
+Für einen ersten öffentlichen Test ohne Terminal:
+
+1. Repository auf GitHub liegen lassen (bereits der Fall).
+2. Auf [netlify.com](https://netlify.com) einloggen → "Add new site" →
+   "Import an existing project" → das GitHub-Repo auswählen.
+3. Netlify erkennt Next.js automatisch (Build-Einstellungen liegen bereits
+   in `netlify.toml`).
+4. Unter "Site settings" → "Environment variables" die Variablen aus
+   `.env.example` eintragen (`ANTHROPIC_API_KEY`, `DATABASE_URL` – siehe
+   nächster Punkt) sowie optional `NEXT_PUBLIC_SITE_URL`.
+5. Deploy starten. Netlify vergibt automatisch eine `*.netlify.app`-URL für
+   den ersten Test; eine eigene Domain kann später unter "Domain settings"
+   ergänzt werden.
+
+**Wichtig vor dem ersten Netlify-Deploy:**
+
+- **Datenbank**: `DATABASE_URL` muss auf eine öffentlich erreichbare
+  Postgres-Instanz zeigen (z.B. [Neon](https://neon.tech) oder
+  [Supabase](https://supabase.com) – beide haben kostenlose Einstiegsstufen).
+  Eine nur lokal laufende Postgres-Installation reicht nicht.
+- **Datei-Storage**: Wie unten beschrieben liegen Uploads aktuell lokal unter
+  `./uploads/`. Auf Netlify (wie auf jedem Serverless-Hosting) wird dieser
+  Ordner bei jedem Funktionsaufruf zurückgesetzt – hochgeladene Exposés
+  würden verloren gehen. Das muss vor einem echten Live-Test noch auf einen
+  S3/R2-kompatiblen Adapter umgestellt werden (siehe `lib/storage/`).
+
 ## Wichtige Hinweise
 
 - **Rechtstexte** (`/datenschutz`, `/impressum`, `/nutzungsbedingungen`) sind
