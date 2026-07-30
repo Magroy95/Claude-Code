@@ -372,8 +372,24 @@ export function Report({
           <ObjektdatenZeile label="Zimmer" value={o.zimmer} />
           <ObjektdatenZeile label="Energieklasse" value={o.energieklasse} />
           <ObjektdatenZeile label="Energiebedarf" value={o.energiebedarfKwhM2a} suffix=" kWh/(m²·a)" />
+          <ObjektdatenZeile
+            label="Energieausweistyp"
+            value={
+              o.energieausweisTyp === "BEDARF"
+                ? "Bedarfsausweis"
+                : o.energieausweisTyp === "VERBRAUCH"
+                  ? "Verbrauchsausweis"
+                  : null
+            }
+          />
           <ObjektdatenZeile label="Heizungstyp" value={o.heizungstyp} />
         </dl>
+        {o.energieausweisTyp === "VERBRAUCH" && (
+          <p className="text-xs text-amber-700 dark:text-amber-400 mt-3">
+            Verbrauchsausweis: Der ausgewiesene Energiewert beruht auf dem tatsächlichen Heizverhalten der
+            Vorbewohner, nicht auf einer Gebäudeberechnung – der reale energetische Bedarf kann davon abweichen.
+          </p>
+        )}
       </Section>
 
       <Section title="Marktwert-Orientierung">

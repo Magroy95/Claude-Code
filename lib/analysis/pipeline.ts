@@ -114,7 +114,13 @@ async function extraktionAgent(
     max_tokens: 4096,
     system:
       "Du bist ein Immobilien-Analyst. Extrahiere die Objektdaten aus dem beigefügten Exposé so präzise wie möglich. " +
-      "Wenn ein Wert nicht im Dokument steht, setze ihn auf null statt zu raten.",
+      "Wenn ein Wert nicht im Dokument steht, setze ihn auf null statt zu raten.\n\n" +
+      "Erkenne zusätzlich den Typ des Energieausweises: Steht im Exposé 'Bedarfsausweis' (oder 'Energiebedarfsausweis'), " +
+      "setze energieausweisTyp auf 'BEDARF'; steht dort 'Verbrauchsausweis' (oder 'Energieverbrauchsausweis'), setze " +
+      "'VERBRAUCH'. Ist der Typ nicht eindeutig benannt, setze null statt zu raten – das ist eine wichtige " +
+      "Unterscheidung (ein Verbrauchsausweis basiert auf dem tatsächlichen Heizverhalten der Vorbewohner, nicht auf " +
+      "dem berechneten Gebäudebedarf, und ist deshalb weniger belastbar), also nicht einfach 'BEDARF' annehmen, wenn " +
+      "es nicht explizit dasteht.",
     messages: [
       {
         role: "user",
@@ -198,6 +204,27 @@ async function marktwertAgent(
   return message.parsed_output;
 }
 
+function energieausweisHinweisText(objektdaten: Objektdaten): string {
+  if (objektdaten.energieausweisTyp === "VERBRAUCH") {
+    return (
+      "\n\nWICHTIG zum Energieausweis: Es liegt ein VERBRAUCHSAUSWEIS vor. Dieser beruht auf dem tatsächlichen " +
+      "Heizverhalten der Vorbewohner (Personenzahl, Heizgewohnheiten, Leerstandszeiten), nicht auf einer " +
+      "gebäudebezogenen Berechnung – der reale energetische Bedarf kann davon spürbar nach oben oder unten " +
+      "abweichen. Nimm in die Hypothese zum energetischen Zustand explizit einen Hinweis darauf auf (z.B. als " +
+      "eigene Prüffrage nach einem vorliegenden oder nachträglich erstellbaren Bedarfsausweis) und formuliere den " +
+      "energetischen Zustand entsprechend vorsichtiger, statt den Verbrauchswert wie einen Bedarfswert zu behandeln."
+    );
+  }
+  if (objektdaten.energieausweisTyp === null && objektdaten.energieklasse !== null) {
+    return (
+      "\n\nHinweis zum Energieausweis: Der Typ (Bedarfs- oder Verbrauchsausweis) ist aus dem Exposé nicht eindeutig " +
+      "erkennbar. Nimm deshalb eine Prüffrage auf, welcher Ausweistyp vorliegt, da ein Verbrauchsausweis auf " +
+      "tatsächlichem Heizverhalten statt einer Gebäudeberechnung beruht und entsprechend abweichen kann."
+    );
+  }
+  return "";
+}
+
 async function risikoAgent(
   objektdaten: Objektdaten,
   freitext: string | null,
@@ -225,7 +252,8 @@ async function risikoAgent(
       "Einblasdämmung möglich wäre? Oder ist es einschaliges/massives Mauerwerk ohne Hohlraum, bei dem stattdessen " +
       "teurere Alternativen (WDVS/Außendämmung oder Innendämmung mit Tauwasser-/Schimmelrisiko) nötig sind? " +
       "Nenne diese Unterscheidung explizit in der Hypothese und nimm 'Mauerwerksaufbau (ein-/zweischalig, " +
-      "Hohlraum vorhanden?) prüfen bzw. beim Verkäufer/Bauakte erfragen' als Prüffrage auf.",
+      "Hohlraum vorhanden?) prüfen bzw. beim Verkäufer/Bauakte erfragen' als Prüffrage auf." +
+      energieausweisHinweisText(objektdaten),
     messages: [
       {
         role: "user",
@@ -474,7 +502,12 @@ async function gesamtPruefungAgent(report: AnalysisReport): Promise<GesamtPruefu
       "wiederholen – zusammenfassen oder Duplikate entfernen.\n" +
       "6. Marktdaten-Zitation: Wurde dir im marktwertText eine amtliche Marktdaten-Referenz mitgeteilt, muss " +
       "sie erkennbar benannt sein; wurde explizit das Fehlen einer amtlichen Grundlage vermerkt, darf das nicht " +
-      "verschwiegen/entfernt werden.\n\n" +
+      "verschwiegen/entfernt werden.\n" +
+      "7. Verbrauchsausweis-Hinweis: Liegt laut objektdaten.energieausweisTyp ein VERBRAUCHSAUSWEIS vor, muss der " +
+      "Report an mindestens einer Stelle (typischerweise in einer energiebezogenen Hypothese, die du hier nicht " +
+      "verändern kannst) explizit darauf hinweisen, dass der ausgewiesene Wert auf dem tatsächlichen Verbrauch der " +
+      "Vorbewohner beruht und vom realen Bedarf abweichen kann. Fehlt dieser Hinweis komplett, ergänze ihn knapp in " +
+      "gesamtbildText (ohne dafür bereits vorhandene Kernaussagen zu verdrängen).\n\n" +
       "Ist bereits alles konsistent, gib alle Felder UNVERÄNDERT zurück und aenderungen = []. Sind Korrekturen " +
       "nötig, gib ALLE Felder vollständig zurück (auch die unveränderten, nicht nur Ausschnitte) und liste in " +
       "aenderungen knapp auf (je ein Satz), was geändert wurde und warum.",

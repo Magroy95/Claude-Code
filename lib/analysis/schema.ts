@@ -8,6 +8,14 @@ export const hypothesenKategorie = z.enum([
 ]);
 export const ampelStufe = z.enum(["GRUEN", "GELB", "ROT"]);
 
+// Ein Verbrauchsausweis spiegelt das tatsächliche Heizverhalten der
+// Vorbewohner (Anzahl Personen, Heizgewohnheiten, Leerstandszeiten) wider,
+// nicht den normierten energetischen Bedarf des Gebäudes – der reale
+// Bedarf kann daher spürbar abweichen. Ein Bedarfsausweis ist
+// gebäudebezogen berechnet und deutlich belastbarer. Diese Unterscheidung
+// muss deshalb explizit erfasst und im Report kenntlich gemacht werden.
+export const energieausweisTypEnum = z.enum(["BEDARF", "VERBRAUCH"]);
+
 export const objektdatenSchema = z.object({
   adresseOderLage: z.string(),
   baujahr: z.number().int().nullable(),
@@ -16,6 +24,8 @@ export const objektdatenSchema = z.object({
   zimmer: z.number().nullable(),
   energieklasse: z.string().nullable(),
   energiebedarfKwhM2a: z.number().nullable(),
+  // null, wenn im Exposé nicht erkennbar, ob Bedarfs- oder Verbrauchsausweis.
+  energieausweisTyp: energieausweisTypEnum.nullable(),
   heizungstyp: z.string().nullable(),
   angebotspreisEur: z.number(),
 });
