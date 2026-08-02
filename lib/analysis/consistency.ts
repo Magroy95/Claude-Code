@@ -14,6 +14,7 @@ import type {
   RisikoAgentResult,
   FinanzAgentResult,
   AnalysisReport,
+  Hypothese,
 } from "./schema";
 
 export class ConsistencyError extends Error {
@@ -81,6 +82,33 @@ export function validateFinanz(result: FinanzAgentResult): void {
     );
     assertNonNegative(`Risikoszenario "${s.titel}" (einmaliger Betrag, Minimum)`, s.einmaligerBetragMinEur);
   }
+}
+
+// Die Ampel-Regel aus dem syntheseAgent-Prompt ("ROT = mehrere
+// KAUFENTSCHEIDEND-Hypothesen mit hohem Risiko ...") ist kein
+// Ermessensspielraum, sondern eine mechanische Regel. Ein ConsistencyError
+// (wie bei den übrigen Checks in dieser Datei) würde über withRetry einen
+// erneuten Modellaufruf auslösen – das hilft hier aber nicht: In der Praxis
+// hat sich gezeigt, dass ein Modell, das die Regel einmal anders auslegt,
+// das bei mehreren Versuchen hintereinander konsistent wieder tut (kein
+// Zufallsfehler, sondern eine andere Gewichtung), sodass withRetry nach
+// allen Versuchen aufgibt und die gesamte Analyse fehlschlägt – für eine
+// Regel, die eigentlich reines Abzählen ist. Deshalb hier stattdessen
+// deterministisch erzwingen statt werfen: "mehrere" wird als "mindestens 2"
+// ausgelegt.
+const MIN_HOCH_RISIKO_KAUFENTSCHEIDEND_FUER_ROT = 2;
+
+export function erzwingeAmpelKonsistenz(
+  ampel: AnalysisReport["ampel"],
+  hypothesen: Hypothese[],
+): { ampel: AnalysisReport["ampel"]; wurdeKorrigiert: boolean } {
+  const anzahlHochRisikoKaufentscheidend = hypothesen.filter(
+    (h) => h.kategorie === "KAUFENTSCHEIDEND" && h.risiko === "HOCH",
+  ).length;
+  if (anzahlHochRisikoKaufentscheidend >= MIN_HOCH_RISIKO_KAUFENTSCHEIDEND_FUER_ROT && ampel !== "ROT") {
+    return { ampel: "ROT", wurdeKorrigiert: true };
+  }
+  return { ampel, wurdeKorrigiert: false };
 }
 
 // Letzte, günstige Sicherheitsprüfung über den fertig zusammengesetzten

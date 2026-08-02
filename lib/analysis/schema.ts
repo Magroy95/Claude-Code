@@ -28,6 +28,13 @@ export const objektdatenSchema = z.object({
   energieausweisTyp: energieausweisTypEnum.nullable(),
   heizungstyp: z.string().nullable(),
   angebotspreisEur: z.number(),
+  // Kurze, sachliche Notizen aus dem Beschreibungs-/Fließtext des Exposés
+  // (nicht aus den strukturierten Tabellenfeldern), die auf Schäden,
+  // Rückbauten, unfertige/nicht nutzbare Räume oder Widersprüche zu den
+  // strukturierten Feldern hindeuten (z.B. "Anzahl Badezimmer: 2" in der
+  // Tabelle, aber ein Bad laut Beschreibung im Rohbauzustand). Leeres
+  // Array, wenn der Fließtext nichts dergleichen enthält.
+  besonderheitenAusExpose: z.array(z.string()),
 });
 export type Objektdaten = z.infer<typeof objektdatenSchema>;
 

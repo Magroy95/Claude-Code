@@ -31,7 +31,13 @@ import {
   type FinanzierungsKennzahlen,
 } from "./finance";
 import { withRetry } from "./retry";
-import { validateMarktwert, validateRisiko, validateFinanz, validateReport } from "./consistency";
+import {
+  validateMarktwert,
+  validateRisiko,
+  validateFinanz,
+  validateReport,
+  erzwingeAmpelKonsistenz,
+} from "./consistency";
 import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
 
 const DISCLAIMER_HINWEIS =
@@ -120,7 +126,15 @@ async function extraktionAgent(
       "'VERBRAUCH'. Ist der Typ nicht eindeutig benannt, setze null statt zu raten – das ist eine wichtige " +
       "Unterscheidung (ein Verbrauchsausweis basiert auf dem tatsächlichen Heizverhalten der Vorbewohner, nicht auf " +
       "dem berechneten Gebäudebedarf, und ist deshalb weniger belastbar), also nicht einfach 'BEDARF' annehmen, wenn " +
-      "es nicht explizit dasteht.",
+      "es nicht explizit dasteht.\n\n" +
+      "Lies außerdem den Beschreibungs-/Ausstattungs-/Lagetext (nicht nur die Tabellenfelder) aufmerksam durch und " +
+      "erfasse in besonderheitenAusExpose als Liste kurzer, sachlicher Notizen alles, was dort steht, aber nicht in " +
+      "den strukturierten Feldern abgebildet ist oder diesen widerspricht. Achte besonders auf: erwähnte Schäden " +
+      "oder Schadensbeseitigungen, Rückbauten, unfertige/nicht nutzbare Räume (z.B. Rohbauzustand), sowie " +
+      "Widersprüche zwischen einer im Text genannten Stückzahl (z.B. 'zwei Badezimmer') und deren tatsächlich " +
+      "beschriebenem Zustand (z.B. wenn eines davon laut Text zurückgebaut und nicht nutzbar ist). Jede Notiz kurz " +
+      "und konkret (ein Satz), nichts interpretieren oder bewerten – das macht ein späterer Schritt. Leeres Array, " +
+      "wenn der Fließtext nichts dergleichen enthält, nichts erfinden.",
     messages: [
       {
         role: "user",
@@ -252,7 +266,12 @@ async function risikoAgent(
       "Einblasdämmung möglich wäre? Oder ist es einschaliges/massives Mauerwerk ohne Hohlraum, bei dem stattdessen " +
       "teurere Alternativen (WDVS/Außendämmung oder Innendämmung mit Tauwasser-/Schimmelrisiko) nötig sind? " +
       "Nenne diese Unterscheidung explizit in der Hypothese und nimm 'Mauerwerksaufbau (ein-/zweischalig, " +
-      "Hohlraum vorhanden?) prüfen bzw. beim Verkäufer/Bauakte erfragen' als Prüffrage auf." +
+      "Hohlraum vorhanden?) prüfen bzw. beim Verkäufer/Bauakte erfragen' als Prüffrage auf.\n\n" +
+      "WICHTIG: objektdaten.besonderheitenAusExpose enthält Notizen aus dem Fließtext des Exposés (Schäden, " +
+      "Rückbauten, unfertige Räume, Widersprüche zu Tabellenfeldern). Für JEDE Notiz darin MUSST du eine eigene " +
+      "Hypothese (meist KAUFENTSCHEIDEND oder KOSTENRELEVANT, je nach Tragweite) mit konkreten Prüffragen " +
+      "aufnehmen – das sind vom Verkäufer/Makler selbst offengelegte Sachverhalte, die nicht untergehen dürfen, " +
+      "nur weil sie im Fließtext statt in einer Tabelle standen." +
       energieausweisHinweisText(objektdaten),
     messages: [
       {
@@ -534,6 +553,12 @@ function wendeGesamtPruefungAn(
   report: AnalysisReport,
   pruefung: GesamtPruefungResult,
 ): AnalysisReport {
+  const { ampel, wurdeKorrigiert } = erzwingeAmpelKonsistenz(pruefung.ampel, report.hypothesen);
+  if (wurdeKorrigiert) {
+    console.warn(
+      `[HauskaufChecker] Ampel deterministisch auf ROT korrigiert (Gesamt-Prüfung), Modell lieferte "${pruefung.ampel}".`,
+    );
+  }
   const finalReport = analysisReportSchema.parse({
     ...report,
     marktEinschaetzung: pruefung.marktEinschaetzung,
@@ -544,7 +569,7 @@ function wendeGesamtPruefungAn(
     argumentePro: pruefung.argumentePro,
     gesamtbildText: pruefung.gesamtbildText,
     offenePunkte: pruefung.offenePunkte,
-    ampel: pruefung.ampel,
+    ampel,
     kurzfazit: pruefung.kurzfazit,
   });
   validateReport(finalReport);
@@ -701,10 +726,18 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     const finanz = checkpoint.finanz;
 
     if (!checkpoint.synthese) {
-      checkpoint.synthese = await withRetry(
+      const syntheseResult = await withRetry(
         () => syntheseAgent({ objektdaten, marktwert, risiko, finanz }),
         AGENT_RETRY_OPTIONS,
       );
+      const { ampel, wurdeKorrigiert } = erzwingeAmpelKonsistenz(syntheseResult.ampel, risiko.hypothesen);
+      if (wurdeKorrigiert) {
+        console.warn(
+          `[HauskaufChecker] Ampel deterministisch auf ROT korrigiert bei Analyse ${analysisId} ` +
+            `(Modell lieferte "${syntheseResult.ampel}").`,
+        );
+      }
+      checkpoint.synthese = { ...syntheseResult, ampel };
       await speichereCheckpointSchritt(analysisId, "synthese", checkpoint.synthese);
     }
     const synthese = checkpoint.synthese;
