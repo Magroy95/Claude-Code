@@ -9,15 +9,23 @@
 // Koordinaten wird der offene WFS-Dienst des Landesamts für Geoinformation
 // und Landesvermessung Niedersachsen (LGLN) abgefragt.
 //
-// WICHTIG (siehe README, Abschnitt "Marktdaten-Quellen verifizieren"): Der
-// WFS-Endpunkt, Layer-Name und die Feldnamen unten sind nach bestem Wissen
-// zum LGLN-Dienst modelliert, konnten aber in dieser Session NICHT gegen die
-// echte, lebende Schnittstelle getestet werden – der Netzwerkzugriff dieser
-// Umgebung ist auf eine Allowlist beschränkt (bestätigt per Verbindungstest,
-// 403 der Egress-Policy). Vor dem Live-Betrieb einmal mit einer bekannten
-// Adresse gegenprüfen; bis dahin liefert jeder Fehler (falscher Layer-Name,
-// falsches Feld, Timeout, ...) kontrolliert `null` statt eines Absturzes –
-// die Pipeline läuft dann exakt wie ohne diese Anbindung weiter.
+// WICHTIG (siehe README, Abschnitt "Marktdaten-Quellen verifizieren"): Die
+// Domain unten (opendata.lgln.niedersachsen.de/.../boris_wfs) wurde per
+// Web-Recherche bestätigt (LGLN OpenGeoData, NUMIS-Metadatenkatalog) – eine
+// frühere Version dieses Adapters zeigte auf eine falsche/veraltete Domain.
+// Layer-Name und Feldnamen (typeNames, brw/stag) konnten dagegen NICHT
+// verifiziert werden: sowohl der direkte Verbindungstest aus der
+// Dev-Sandbox als auch ein Abruf über ein Recherche-Tool mit echtem
+// Internetzugang liefern von diesem und verwandten LGLN-/ArcGIS-Hosts
+// durchgehend HTTP 403 – die Dienste scheinen automatisierte, nicht aus
+// einem Browser/GIS-Client stammende Anfragen grundsätzlich abzulehnen.
+// Das ist ein stärkeres Signal als nur "diese Sandbox ist beschränkt": Ein
+// einfacher fetch()-Aufruf aus der Produktion könnte an derselben Hürde
+// scheitern. Deshalb gibt es zusätzlich eine von Hand kuratierte
+// Referenztabelle (siehe bodenrichtwerteReferenz.ts) als Fallback, wenn
+// dieser Live-Abruf `null` liefert – aktuell der Regelfall.
+// Jeder Fehler hier (falscher Layer-Name, falsches Feld, Timeout, 403, ...)
+// liefert kontrolliert `null` statt eines Absturzes.
 //
 // Weitere Bundesländer: bewusst noch nicht implementiert (jedes Bundesland
 // betreibt einen eigenen Gutachterausschuss mit eigenem Dienst/Format).
@@ -30,7 +38,7 @@ import { fetchWithTimeout } from "./fetchWithTimeout";
 import type { BodenrichtwertErgebnis } from "./types";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
-const LGLN_WFS_URL = "https://www.geobasisdaten.niedersachsen.de/doorman/noauth/brw_wfs";
+const LGLN_WFS_URL = "https://opendata.lgln.niedersachsen.de/doorman/noauth/boris_wfs";
 
 interface Koordinaten {
   lat: number;
@@ -85,7 +93,7 @@ async function frageBrwWfsAb(
       service: "WFS",
       version: "2.0.0",
       request: "GetFeature",
-      typeNames: "brw:Bodenrichtwerte",
+      typeNames: "boris:Bodenrichtwerte",
       outputFormat: "application/json",
       bbox: `${bbox},EPSG:4326`,
       count: "1",
