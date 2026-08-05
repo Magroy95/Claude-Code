@@ -2,9 +2,16 @@
 // Restschuld werden hier berechnet statt vom LLM erfragt zu werden, damit die
 // Kernzahlen des Reports nicht auf halluzinierter Arithmetik beruhen.
 
-export const STANDARD_ZINS = 0.045;
+// Standardannahmen der Finanzierungsrechnung. Sie werden im Report offen
+// ausgewiesen (siehe Annahmen-Block in app/components/Report.tsx), damit die
+// Monatsbelastung nachvollziehbar ist und nicht als gesetzt missverstanden
+// wird. Bei einer Zinsänderung am Markt ist STANDARD_ZINS der einzige Wert,
+// der angefasst werden muss – Report und Prototyp lesen ihn von hier.
+export const STANDARD_ZINS = 0.0425;
 export const STANDARD_TILGUNG = 0.02;
 export const STRESS_ZINS = 0.065;
+export const ZINSBINDUNG_JAHRE = 10;
+export const INSTANDHALTUNG_EUR_PRO_QM_MONAT = 2.25;
 
 export interface AnnuitaetParams {
   darlehenEur: number;
@@ -54,7 +61,7 @@ export function berechneFinanzierungsKennzahlen(params: {
     darlehenEur,
     zinsSatz: STANDARD_ZINS,
     tilgungSatz: STANDARD_TILGUNG,
-    jahre: 10,
+    jahre: ZINSBINDUNG_JAHRE,
   });
   const annuitaetBeiZinsanstiegEur = monatlicheAnnuitaet({
     darlehenEur: restschuldNach10JahrenEur,
@@ -72,5 +79,5 @@ export function berechneFinanzierungsKennzahlen(params: {
 
 export function instandhaltungsruecklage(wohnflaecheQm: number | null): number {
   const qm = wohnflaecheQm ?? 120;
-  return Math.round(qm * 2.25);
+  return Math.round(qm * INSTANDHALTUNG_EUR_PRO_QM_MONAT);
 }

@@ -11,6 +11,10 @@ function formatEur(value: number): string {
   }).format(value);
 }
 
+function formatProzent(anteil: number): string {
+  return `${(anteil * 100).toLocaleString("de-DE", { maximumFractionDigits: 2 })} %`;
+}
+
 function Section({
   title,
   children,
@@ -30,6 +34,12 @@ const KATEGORIE_LABEL: Record<Hypothese["kategorie"], string> = {
   KAUFENTSCHEIDEND: "Kaufentscheidend",
   KOSTENRELEVANT: "Kostenrelevant",
   STRATEGISCH: "Strategisch",
+};
+
+const KATEGORIE_SLUG: Record<Hypothese["kategorie"], string> = {
+  KAUFENTSCHEIDEND: "kat-kaufentscheidend",
+  KOSTENRELEVANT: "kat-kostenrelevant",
+  STRATEGISCH: "kat-strategisch",
 };
 
 const RISIKO_CLASS: Record<Hypothese["risiko"], string> = {
@@ -245,6 +255,13 @@ export function Report({
 }) {
   const o = report.objektdaten;
   const ampel = AMPEL_CONFIG[report.ampel];
+  // Bewusst aus den Bestandteilen summiert statt aus cashflow.gesamtbelastungEur
+  // gelesen: Ältere, vor der Umstellung gespeicherte Reports enthalten dort noch
+  // die früher mitgerechneten geschätzten Nebenkosten. Die Summe hier hält die
+  // Kennzahl deckungsgleich mit der darunter ausgewiesenen Rechnung.
+  const rateUndRuecklageEur =
+    report.cashflow.monatlicheAnnuitaetEur + report.cashflow.instandhaltungsruecklageEur;
+  const annahmen = report.finanzAnnahmen;
   const hypothesenByKategorie = (
     ["KAUFENTSCHEIDEND", "KOSTENRELEVANT", "STRATEGISCH"] as const
   ).map((kategorie) => ({
@@ -312,8 +329,8 @@ export function Report({
           value={o.grundstueckQm ? `${o.grundstueckQm.toLocaleString("de-DE")} m²` : "–"}
         />
         <Kachel
-          label="Gesamtbelastung / Monat"
-          value={`ca. ${formatEur(report.cashflow.gesamtbelastungEur)}`}
+          label="Rate + Rücklage / Monat"
+          value={`ca. ${formatEur(rateUndRuecklageEur)}`}
         />
         <Kachel
           label="Geschätzter Sanierungsstau"
@@ -321,6 +338,46 @@ export function Report({
           tone={sanierungsstauTone(report.sanierungsstauMaxEur, o.angebotspreisEur)}
         />
       </div>
+
+      {/*
+        Annahmen offen ausweisen: Die Monatsbelastung ist die am leichtesten
+        angreifbare Zahl im Report, solange nicht dabeisteht, mit welchem Zins
+        und welcher Tilgung gerechnet wurde. Die Werte stammen aus dem Report
+        selbst (nicht aus den aktuellen Konstanten), damit ein später geänderter
+        Marktzins die Annahmen eines alten Reports nicht verfälscht.
+      */}
+      {annahmen && (
+        <div className="rpt-annahmen">
+          <p className="rpt-annahmen-head">Annahmen der Finanzierungsrechnung</p>
+          <dl className="rpt-annahmen-liste">
+            <div>
+              <dt>Sollzins</dt>
+              <dd>{formatProzent(annahmen.sollzins)} p.&nbsp;a.</dd>
+            </div>
+            <div>
+              <dt>Anfangstilgung</dt>
+              <dd>{formatProzent(annahmen.tilgung)} (Standardannahme)</dd>
+            </div>
+            <div>
+              <dt>Zinsbindung</dt>
+              <dd>{annahmen.zinsbindungJahre} Jahre</dd>
+            </div>
+            <div>
+              <dt>Stresstest-Zins</dt>
+              <dd>{formatProzent(annahmen.stressZins)} nach Ablauf der Bindung</dd>
+            </div>
+          </dl>
+          <p className="rpt-annahmen-formel">
+            {formatEur(rateUndRuecklageEur)} = Annuität{" "}
+            {formatEur(report.cashflow.monatlicheAnnuitaetEur)} + Instandhaltungsrücklage{" "}
+            {formatEur(report.cashflow.instandhaltungsruecklageEur)} (
+            {annahmen.instandhaltungEurProQmMonat.toLocaleString("de-DE")} €/m² im Monat). Laufende
+            Nebenkosten wie Grundsteuer, Gebäudeversicherung und Energie sind bewusst{" "}
+            <strong>nicht</strong> enthalten – sie hängen von Angaben ab, die nicht im Exposé
+            stehen, und werden hier nicht geschätzt.
+          </p>
+        </div>
+      )}
 
       <Section title="Einschätzung">
         <p className="rpt-text">{report.marktEinschaetzung}</p>
@@ -436,8 +493,16 @@ export function Report({
         {hypothesenByKategorie.map(
           ({ kategorie, items }) =>
             items.length > 0 && (
-              <div key={kategorie} className="rpt-hyp-group">
-                <h3 className="rpt-subhead">{KATEGORIE_LABEL[kategorie]}</h3>
+              <div
+                key={kategorie}
+                className={`rpt-hyp-group ${KATEGORIE_SLUG[kategorie]}-cards`}
+              >
+                <h3 className={`rpt-kat ${KATEGORIE_SLUG[kategorie]}`}>
+                  <span className="rpt-kat-name">{KATEGORIE_LABEL[kategorie]}</span>
+                  <span className="rpt-kat-anzahl">
+                    {items.length} {items.length === 1 ? "Hypothese" : "Hypothesen"}
+                  </span>
+                </h3>
                 {items.map((h) => (
                   <HypotheseCard key={h.key} h={h} />
                 ))}

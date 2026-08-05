@@ -73,7 +73,6 @@ export function validateRisiko(result: RisikoAgentResult): void {
 }
 
 export function validateFinanz(result: FinanzAgentResult): void {
-  assertNonNegative("Sonstige Nebenkosten", result.sonstigeNebenkostenEur);
   for (const s of result.risikoSzenarien) {
     assertRange(
       `Risikoszenario "${s.titel}" (einmaliger Betrag)`,

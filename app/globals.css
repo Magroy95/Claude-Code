@@ -179,6 +179,26 @@ body {
 .rpt-kpi.tone-gelb b { color: var(--ochre); }
 .rpt-kpi.tone-gruen b { color: var(--moss); }
 
+/* --- Annahmen der Finanzierungsrechnung --- */
+.rpt-annahmen {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--paper-raised); padding: 16px 18px; margin-bottom: 30px; break-inside: avoid;
+}
+.rpt-annahmen-head {
+  font-family: var(--rpt-mono); font-size: 11px; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--ink-faint); margin-bottom: 12px;
+}
+.rpt-annahmen-liste { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 24px; margin: 0 0 12px; }
+@media (max-width: 560px) { .rpt-annahmen-liste { grid-template-columns: 1fr; } }
+.rpt-annahmen-liste > div {
+  display: flex; justify-content: space-between; gap: 12px;
+  border-bottom: 1px dotted var(--line); padding-bottom: 4px; font-size: 13.5px; margin: 0;
+}
+.rpt-annahmen-liste dt { color: var(--ink-faint); flex: none; }
+.rpt-annahmen-liste dd { margin: 0; text-align: right; font-family: var(--rpt-mono); font-variant-numeric: tabular-nums; }
+.rpt-annahmen-formel { font-size: 12.5px; color: var(--ink-soft); line-height: 1.6; }
+.rpt-annahmen-formel strong { color: var(--ink); }
+
 /* --- Abschnitte --- */
 /* Bewusst KEIN break-inside:avoid auf dem ganzen Abschnitt: Abschnitte wie
    "Hypothesen" sind länger als eine Druckseite, und der Browser schiebt dann
@@ -273,12 +293,38 @@ body {
 .pro .rpt-argu-mini { background: var(--moss-tint); border: 1px solid color-mix(in srgb, var(--moss) 25%, transparent); }
 
 /* --- Hypothesen --- */
-.rpt-hyp-group { margin-bottom: 22px; }
+.rpt-hyp-group { margin-bottom: 28px; }
 .rpt-hyp-group:last-child { margin-bottom: 0; }
+
+/* Kategorie-Band: Die drei Kategorien sind eine Prioritätenskala, keine
+   gleichrangigen Rubriken – deshalb je eigene Signalfarbe plus Anzahl, damit
+   beim Blättern sofort erkennbar ist, wo die kaufentscheidenden Punkte enden. */
+.rpt-kat {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  border-left: 4px solid var(--ink-faint);
+  background: var(--paper-sunken);
+  padding: 8px 12px; margin-bottom: 12px; border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  break-after: avoid;
+}
+.rpt-kat-name {
+  font-family: var(--rpt-mono); font-size: 12px; font-weight: 400;
+  letter-spacing: 0.09em; text-transform: uppercase;
+}
+.rpt-kat-anzahl { font-family: var(--rpt-mono); font-size: 11px; color: var(--ink-faint); flex: none; }
+.rpt-kat.kat-kaufentscheidend { border-left-color: var(--brick); background: var(--brick-tint); }
+.rpt-kat.kat-kaufentscheidend .rpt-kat-name { color: var(--brick); }
+.rpt-kat.kat-kostenrelevant { border-left-color: var(--ochre); background: var(--ochre-tint); }
+.rpt-kat.kat-kostenrelevant .rpt-kat-name { color: var(--ochre); }
+.rpt-kat.kat-strategisch { border-left-color: var(--moss); background: var(--moss-tint); }
+.rpt-kat.kat-strategisch .rpt-kat-name { color: var(--moss); }
+
 .hyp-card {
-  border: 1px solid var(--line); border-radius: var(--radius-s);
+  border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: var(--radius-s);
   background: var(--paper-raised); padding: 16px 18px; margin-bottom: 12px; break-inside: avoid;
 }
+.kat-kaufentscheidend-cards .hyp-card { border-left-color: var(--brick); }
+.kat-kostenrelevant-cards .hyp-card { border-left-color: var(--ochre); }
+.kat-strategisch-cards .hyp-card { border-left-color: var(--moss); }
 .hyp-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 5px; }
 .hyp-title { font-family: var(--rpt-display); font-weight: 700; font-size: 15px; }
 .hyp-key { font-family: var(--rpt-mono); font-weight: 400; color: var(--ink-faint); }

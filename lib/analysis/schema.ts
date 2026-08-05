@@ -99,12 +99,30 @@ export const analysisReportSchema = z.object({
   // durchnummerierten Fließtexts, damit sie als Liste/Karten darstellbar sind.
   verhandlungsargumente: z.array(argumentSchema).min(2).max(5),
   kaufnebenkostenSchaetzungEur: z.number(),
+  // Bewusst nur vollständig durchgerechnete Posten: Rate und
+  // Instandhaltungsrücklage. Laufende Nebenkosten (Grundsteuer,
+  // Versicherung, Energie) hängen von Faktoren ab, die nicht im Exposé
+  // stehen, und wurden früher vom Modell geschätzt – das widersprach der
+  // Zusage, dass Zahlen gerechnet und nicht geschätzt werden.
   cashflow: z.object({
     monatlicheAnnuitaetEur: z.number(),
     instandhaltungsruecklageEur: z.number(),
-    sonstigeNebenkostenEur: z.number(),
     gesamtbelastungEur: z.number(),
   }),
+  // Die zum Zeitpunkt der Analyse gültigen Rechenannahmen werden mitgespeichert
+  // statt beim Anzeigen aus den aktuellen Konstanten gelesen: Ändert sich der
+  // Marktzins, würde ein alter Report sonst neue Annahmen neben alten Zahlen
+  // ausweisen. Optional, weil vor Einführung erzeugte Reports sie nicht haben –
+  // dort wird der Annahmen-Block bewusst weggelassen statt geraten.
+  finanzAnnahmen: z
+    .object({
+      sollzins: z.number(),
+      tilgung: z.number(),
+      zinsbindungJahre: z.number(),
+      stressZins: z.number(),
+      instandhaltungEurProQmMonat: z.number(),
+    })
+    .optional(),
   risikoSzenarien: z.array(risikoSzenarioSchema).min(1),
   argumenteContra: z.array(argumentSchema).min(1),
   argumentePro: z.array(argumentSchema).min(1),
@@ -149,10 +167,9 @@ export const risikoAgentSchema = z.object({
 export type RisikoAgentResult = z.infer<typeof risikoAgentSchema>;
 
 export const finanzAgentSchema = z.object({
-  // Annuität, Instandhaltungsrücklage und Zinsanstiegs-Kennzahlen werden
-  // deterministisch berechnet (lib/analysis/finance.ts) und dem Agenten als
-  // gegebene Zahlen übergeben; nur die sonstigen Nebenkosten sind Schätzung.
-  sonstigeNebenkostenEur: z.number(),
+  // Sämtliche Cashflow-Zahlen werden deterministisch berechnet
+  // (lib/analysis/finance.ts) und dem Agenten als gegebene Werte übergeben.
+  // Der Agent liefert daher nur noch die qualitative Risikoeinordnung.
   risikoSzenarien: z.array(risikoSzenarioSchema).min(1),
 });
 export type FinanzAgentResult = z.infer<typeof finanzAgentSchema>;

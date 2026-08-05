@@ -28,6 +28,11 @@ import {
 import {
   berechneFinanzierungsKennzahlen,
   instandhaltungsruecklage,
+  INSTANDHALTUNG_EUR_PRO_QM_MONAT,
+  STANDARD_ZINS,
+  STANDARD_TILGUNG,
+  STRESS_ZINS,
+  ZINSBINDUNG_JAHRE,
   type FinanzierungsKennzahlen,
 } from "./finance";
 import { withRetry } from "./retry";
@@ -43,6 +48,12 @@ import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
 const DISCLAIMER_HINWEIS =
   "Alle Angaben sind unverbindliche, KI-gestützte Hypothesen auf Basis der bereitgestellten Unterlagen. " +
   "Sie ersetzen keine Prüfung durch einen Bausachverständigen und keine Rechts- oder Finanzberatung.";
+
+// Zinssätze stehen als Dezimalwert in finance.ts, im Prompt sollen sie aber
+// so auftauchen, wie sie später auch im Report stehen (z.B. "4,25 %").
+function formatProzent(anteil: number): string {
+  return `${(anteil * 100).toLocaleString("de-DE", { maximumFractionDigits: 2 })} %`;
+}
 
 // Gemeinsame Grundhaltung + Sprachregeln für alle bewertenden Agenten
 // (nicht für die reine Datenextraktion). Fasst zusammen: skeptische,
@@ -305,15 +316,16 @@ async function finanzAgent(
       "\n\nDu bist in diesem Schritt der Investor mit Fokus auf Finanzierung. Die monatliche Annuität, die " +
       "Instandhaltungsrücklage sowie die Zahlen für den Zinsanstiegs-Stresstest sind bereits deterministisch " +
       "vorberechnet (siehe 'Bereits berechnete Zahlen' unten) – übernimm sie unverändert in deine Texte, rechne " +
-      "sie nicht neu und widersprich ihnen nicht. Schätze selbst nur die sonstigen Nebenkosten (Grundsteuer, " +
-      "Gebäudeversicherung u.ä.).\n\n" +
+      "sie nicht neu und widersprich ihnen nicht. Nenne KEINE geschätzten laufenden Nebenkosten (Grundsteuer, " +
+      "Gebäudeversicherung, Energie) als Zahl: Sie hängen von Angaben ab, die nicht im Exposé stehen, und werden " +
+      "im Report bewusst nicht beziffert.\n\n" +
       "Erstelle zusätzlich einen Risiko-Stresstest mit 2-3 Szenarien:\n" +
       "1) 'Zinsanstieg bei Anschlussfinanzierung': nutze exakt die vorberechnete Annuität-bei-Zinsanstieg-" +
       "Differenz als deltaMonatlicheBelastungEur (einmaligerBetragMinEur/MaxEur = null). WICHTIG: Das Vorzeichen " +
       "ist bereits eindeutig festgelegt – schreibe im Text den vorzeichenrichtigen Wert aus (z.B. 'sinkt um rund " +
       "43 EUR/Monat' bei negativem Wert, 'steigt um rund X EUR/Monat' bei positivem). Schreibe NIEMALS '+/-' oder " +
       "'ca. +/-X' – das ist keine Unsicherheit, sondern ein konkret berechneter Wert. Falls der Wert nahe null " +
-      "oder negativ ist, erkläre kurz warum (die Restschuld ist durch die Tilgung über 10 Jahre bereits so weit " +
+      `oder negativ ist, erkläre kurz warum (die Restschuld ist durch die Tilgung über ${ZINSBINDUNG_JAHRE} Jahre bereits so weit ` +
       "gesunken, dass selbst ein höherer Zinssatz die Rate kaum oder nicht erhöht).\n" +
       "2) Ein Szenario zur energetischen Sanierungspflicht: Das ist KEIN Finanzierungsszenario – unterstelle " +
       "KEINEN neuen Kredit und KEINE zusätzliche Monatsrate dafür (deltaMonatlicheBelastungEur = null für dieses " +
@@ -329,13 +341,14 @@ async function finanzAgent(
           `Objektdaten: ${JSON.stringify(objektdaten)}\nEigenkapital: ${eigenkapitalEur} EUR\n` +
           `Orientierungswert: ${marktwert.orientierungswertMinEur}-${marktwert.orientierungswertMaxEur} EUR\n` +
           `Kaufnebenkosten: ${marktwert.kaufnebenkostenSchaetzungEur} EUR\n\n` +
-          "Bereits berechnete Zahlen (Standardannahme 4,5% Zins/2% Tilgung, Zinsanstiegs-Stresstest 6,5% Zins " +
-          "nach 10 Jahren, nicht selbst neu berechnen):\n" +
+          `Bereits berechnete Zahlen (Standardannahme ${formatProzent(STANDARD_ZINS)} Zins/` +
+          `${formatProzent(STANDARD_TILGUNG)} Tilgung, Zinsanstiegs-Stresstest ${formatProzent(STRESS_ZINS)} Zins ` +
+          `nach ${ZINSBINDUNG_JAHRE} Jahren, nicht selbst neu berechnen):\n` +
           `Darlehenssumme: ${kennzahlen.darlehenEur} EUR\n` +
           `Monatliche Annuität: ${kennzahlen.monatlicheAnnuitaetEur} EUR\n` +
           `Instandhaltungsrücklage: ${instandhaltungsruecklageEur} EUR\n` +
-          `Restschuld nach 10 Jahren: ${kennzahlen.restschuldNach10JahrenEur} EUR\n` +
-          `Annuität bei Zinsanstieg auf 6,5%: ${kennzahlen.annuitaetBeiZinsanstiegEur} EUR ` +
+          `Restschuld nach ${ZINSBINDUNG_JAHRE} Jahren: ${kennzahlen.restschuldNach10JahrenEur} EUR\n` +
+          `Annuität bei Zinsanstieg auf ${formatProzent(STRESS_ZINS)}: ${kennzahlen.annuitaetBeiZinsanstiegEur} EUR ` +
           `(vorzeichenrichtige Differenz: ${kennzahlen.deltaBeiZinsanstiegEur} EUR/Monat)\n` +
           `Geschätzter Sanierungsstau (Summe aus dem Sanierungsfahrplan, als einmaliger Betrag zu verwenden, ` +
           `NICHT in eine neue Kreditrate umrechnen): ${sanierungsstauMinEur}-${sanierungsstauMaxEur} EUR`,
@@ -760,9 +773,14 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     const cashflow = {
       monatlicheAnnuitaetEur: kennzahlen.monatlicheAnnuitaetEur,
       instandhaltungsruecklageEur,
-      sonstigeNebenkostenEur: finanz.sonstigeNebenkostenEur,
-      gesamtbelastungEur:
-        kennzahlen.monatlicheAnnuitaetEur + instandhaltungsruecklageEur + finanz.sonstigeNebenkostenEur,
+      gesamtbelastungEur: kennzahlen.monatlicheAnnuitaetEur + instandhaltungsruecklageEur,
+    };
+    const finanzAnnahmen = {
+      sollzins: STANDARD_ZINS,
+      tilgung: STANDARD_TILGUNG,
+      zinsbindungJahre: ZINSBINDUNG_JAHRE,
+      stressZins: STRESS_ZINS,
+      instandhaltungEurProQmMonat: INSTANDHALTUNG_EUR_PRO_QM_MONAT,
     };
 
     const report: AnalysisReport = analysisReportSchema.parse({
@@ -774,6 +792,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       verhandlungsargumente: marktwert.verhandlungsargumente,
       kaufnebenkostenSchaetzungEur: marktwert.kaufnebenkostenSchaetzungEur,
       cashflow,
+      finanzAnnahmen,
       risikoSzenarien: finanz.risikoSzenarien,
       argumenteContra: synthese.argumenteContra,
       argumentePro: synthese.argumentePro,
@@ -896,6 +915,14 @@ export async function runImpactPipeline(analysisId: string): Promise<void> {
     if (!message.parsed_output) throw new Error("Anreicherungs-Analyse fehlgeschlagen");
 
     const updatedReport = message.parsed_output.updatedReport;
+    // Die Rechenannahmen sind keine inhaltliche Erkenntnis der Besichtigung,
+    // sondern Parameter des Laufs. Da der Agent den Report komplett neu
+    // ausgibt und das Feld optional ist, würde es hier sonst verloren gehen –
+    // der Report zeigte danach Zahlen ohne die zugehörigen Annahmen.
+    const bisherigeAnnahmen = analysisReportSchema.safeParse(latestResult.payload);
+    if (bisherigeAnnahmen.success && bisherigeAnnahmen.data.finanzAnnahmen) {
+      updatedReport.finanzAnnahmen = bisherigeAnnahmen.data.finanzAnnahmen;
+    }
     const pruefung = await withRetry(
       () =>
         sanierungsfahrplanPruefungAgent(
