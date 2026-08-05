@@ -27,9 +27,300 @@ body {
 }
 
 @media print {
-  header,
-  footer,
+  /* Nur die Seiten-Navigation ausblenden (direkte Kinder von <body>), nicht
+     jeden <footer> im Dokument – der Report trägt seinen Haftungsausschluss
+     in einem eigenen <footer>, der im PDF zwingend erhalten bleiben muss. */
+  body > header,
+  body > footer,
   .no-print {
     display: none !important;
   }
+}
+
+/* ============================================================
+   Report-Dokument
+   Eigenständiges Designsystem für die Report-Seite. Bewusst hier
+   und nicht in Tailwind-Utilities, damit Website-Ansicht und
+   PDF-Export garantiert identisch aussehen: Das PDF wird per
+   Playwright aus genau dieser Seite gedruckt (lib/pdf/render.ts),
+   es gibt also kein zweites Template, das auseinanderlaufen könnte.
+   ============================================================ */
+.report-doc {
+  --ink: #21201c;
+  --ink-soft: #5b564c;
+  --ink-faint: #8b8474;
+  --paper: #e7e2d2;
+  --paper-raised: #f4f0e4;
+  --paper-sunken: #dcd6c3;
+  --line: #c9c2ac;
+  --brick: #a03e28;
+  --brick-tint: #f3e1da;
+  --blueprint: #2c5068;
+  --moss: #4c6b4a;
+  --moss-tint: #e2e9df;
+  --ochre: #a9752a;
+  --ochre-tint: #f1e5d1;
+  --radius-s: 2px;
+  --radius: 3px;
+
+  --rpt-display: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  --rpt-body: ui-serif, Charter, "Iowan Old Style", Georgia, "Times New Roman", serif;
+  --rpt-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Consolas, monospace;
+
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--rpt-body);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+@media (prefers-color-scheme: dark) {
+  .report-doc {
+    --ink: #ece6d6;
+    --ink-soft: #b6ad97;
+    --ink-faint: #786f5f;
+    --paper: #14181b;
+    --paper-raised: #1c2226;
+    --paper-sunken: #0e1113;
+    --line: #333c3d;
+    --brick: #c9704e;
+    --brick-tint: #2c1d18;
+    --blueprint: #74a2b8;
+    --moss: #85ab82;
+    --moss-tint: #182219;
+    --ochre: #d6a75c;
+    --ochre-tint: #251c0f;
+  }
+}
+
+/* Im Druck immer die helle Fassung – ein dunkler PDF-Hintergrund wäre
+   weder lesbar noch druckbar. */
+@media print {
+  .report-doc {
+    --ink: #21201c;
+    --ink-soft: #5b564c;
+    --ink-faint: #8b8474;
+    --paper: #e7e2d2;
+    --paper-raised: #f4f0e4;
+    --paper-sunken: #dcd6c3;
+    --line: #c9c2ac;
+    --brick: #a03e28;
+    --brick-tint: #f3e1da;
+    --blueprint: #2c5068;
+    --moss: #4c6b4a;
+    --moss-tint: #e2e9df;
+    --ochre: #a9752a;
+    --ochre-tint: #f1e5d1;
+  }
+}
+
+.report-doc h1,
+.report-doc h2,
+.report-doc h3 {
+  font-family: var(--rpt-display);
+  margin: 0;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.report-doc p { margin: 0; }
+.report-doc .figure { font-family: var(--rpt-mono); font-variant-numeric: tabular-nums; }
+
+/* --- Kopf --- */
+.rpt-header { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.rpt-header h1 { font-size: 24px; font-weight: 700; }
+.rpt-header .rpt-sub { color: var(--ink-soft); font-size: 15px; margin-top: 2px; }
+.rpt-header .rpt-meta {
+  font-family: var(--rpt-mono); font-size: 11.5px; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-faint); margin-top: 8px;
+}
+
+.rpt-change {
+  border: 1px solid var(--blueprint); border-left-width: 3px; border-radius: var(--radius);
+  background: color-mix(in srgb, var(--blueprint) 8%, transparent);
+  padding: 14px 16px; margin-bottom: 26px;
+}
+.rpt-change b { display: block; font-family: var(--rpt-display); font-size: 14px; margin-bottom: 3px; }
+.rpt-change p { font-size: 14px; color: var(--ink-soft); }
+
+/* --- Ampel --- */
+.rpt-ampel {
+  border: 1px solid var(--line); border-left-width: 3px; border-radius: var(--radius);
+  background: var(--paper-raised); padding: 20px 22px; margin-bottom: 26px;
+}
+.rpt-ampel.is-rot { border-left-color: var(--brick); }
+.rpt-ampel.is-gelb { border-left-color: var(--ochre); }
+.rpt-ampel.is-gruen { border-left-color: var(--moss); }
+.rpt-ampel-label {
+  display: flex; align-items: center; gap: 9px;
+  font-family: var(--rpt-mono); font-size: 11.5px; letter-spacing: 0.07em;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.rpt-ampel.is-rot .rpt-ampel-label { color: var(--brick); }
+.rpt-ampel.is-gelb .rpt-ampel-label { color: var(--ochre); }
+.rpt-ampel.is-gruen .rpt-ampel-label { color: var(--moss); }
+.rpt-ampel-dot { width: 9px; height: 9px; border-radius: 50%; background: currentColor; flex: none; }
+.rpt-ampel-text { font-size: 15px; color: var(--ink); line-height: 1.6; }
+.rpt-ampel-note { font-size: 12.5px; color: var(--ink-faint); margin-top: 10px; }
+
+/* --- Kennzahlen --- */
+.rpt-kennzahlen {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: var(--radius-s);
+  overflow: hidden; margin-bottom: 30px;
+}
+@media (max-width: 640px) { .rpt-kennzahlen { grid-template-columns: repeat(2, 1fr); } }
+.rpt-kpi { background: var(--paper-raised); padding: 12px 14px; }
+.rpt-kpi b { display: block; font-family: var(--rpt-mono); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 600; }
+.rpt-kpi span {
+  font-family: var(--rpt-mono); font-size: 10px; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.rpt-kpi.tone-rot b { color: var(--brick); }
+.rpt-kpi.tone-gelb b { color: var(--ochre); }
+.rpt-kpi.tone-gruen b { color: var(--moss); }
+
+/* --- Abschnitte --- */
+/* Bewusst KEIN break-inside:avoid auf dem ganzen Abschnitt: Abschnitte wie
+   "Hypothesen" sind länger als eine Druckseite, und der Browser schiebt dann
+   den kompletten Block auf die nächste Seite – das hinterlässt fast leere
+   Seiten im PDF. Umbruchschutz gehört auf die kleinen, in sich geschlossenen
+   Einheiten (Karte, Szenario, Tabellenzeile), nicht auf den Abschnitt. */
+.rpt-section { padding: 26px 0; border-top: 1px solid var(--line); }
+.rpt-section > h2 {
+  font-family: var(--rpt-mono); font-size: 12px; font-weight: 400;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 14px;
+  break-after: avoid;
+}
+.rpt-subhead {
+  font-family: var(--rpt-mono); font-size: 11px; font-weight: 400; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-faint); margin: 18px 0 10px;
+  break-after: avoid;
+}
+.rpt-text { font-size: 15px; color: var(--ink-soft); line-height: 1.65; }
+.rpt-text + .rpt-text { margin-top: 10px; }
+
+/* --- Objektdaten --- */
+.rpt-dl { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; margin: 0; }
+@media (max-width: 560px) { .rpt-dl { grid-template-columns: 1fr; } }
+.rpt-dl > div {
+  display: flex; justify-content: space-between; gap: 12px;
+  border-bottom: 1px dotted var(--line); padding-bottom: 5px; font-size: 14.5px; margin: 0;
+}
+.rpt-dl dt { color: var(--ink-faint); flex: none; }
+.rpt-dl dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
+.rpt-unbekannt { font-style: italic; color: var(--ochre); }
+.rpt-hinweis { font-size: 12.5px; color: var(--ochre); margin-top: 12px; }
+
+/* --- Preiskorridor --- */
+.rpt-korridor { margin: 6px 0 22px; padding-top: 26px; }
+.rpt-korridor-wrap { position: relative; }
+.rpt-korridor-label { position: absolute; bottom: 100%; margin-bottom: 6px; white-space: nowrap; font-size: 12.5px; }
+.rpt-korridor-label b { font-family: var(--rpt-mono); font-weight: 600; }
+.rpt-korridor-label .over { color: var(--brick); }
+.rpt-korridor-label .in { color: var(--moss); }
+.rpt-korridor-track { position: relative; height: 8px; border-radius: 4px; background: var(--paper-sunken); }
+.rpt-korridor-fill { position: absolute; height: 8px; border-radius: 4px; background: var(--blueprint); opacity: 0.55; }
+.rpt-korridor-marker {
+  position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%;
+  transform: translate(-50%, -50%); background: var(--paper-raised); border: 2px solid var(--brick);
+}
+.rpt-korridor-scale {
+  position: relative; margin-top: 7px; height: 1.4em;
+  font-family: var(--rpt-mono); font-size: 11px; color: var(--ink-faint);
+}
+.rpt-korridor-scale span { position: absolute; }
+
+/* --- Verhandlungsargumente --- */
+.rpt-argu {
+  border-left: 3px solid var(--ochre); background: var(--ochre-tint);
+  padding: 10px 12px; border-radius: 0 var(--radius-s) var(--radius-s) 0; margin-bottom: 10px;
+  break-inside: avoid;
+}
+.rpt-argu b { display: block; font-family: var(--rpt-display); font-size: 14px; margin-bottom: 2px; }
+.rpt-argu p { font-size: 14px; color: var(--ink-soft); }
+
+/* --- Stresstest --- */
+.rpt-scenario {
+  border: 1px solid var(--line); border-radius: var(--radius-s);
+  background: var(--paper-raised); padding: 14px 16px; margin-bottom: 10px; break-inside: avoid;
+}
+.rpt-scenario-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 6px; }
+.rpt-scenario-head b { font-family: var(--rpt-display); font-size: 14.5px; }
+.rpt-delta {
+  flex: none; font-family: var(--rpt-mono); font-size: 12px; white-space: nowrap;
+  padding: 2px 8px; border-radius: var(--radius-s);
+}
+.rpt-delta.bad { background: var(--brick-tint); color: var(--brick); }
+.rpt-delta.good { background: var(--moss-tint); color: var(--moss); }
+.rpt-scenario p { font-size: 14px; color: var(--ink-soft); }
+.rpt-scenario p + p { margin-top: 7px; }
+
+/* --- Pro & Contra --- */
+.rpt-procon { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+@media (max-width: 640px) { .rpt-procon { grid-template-columns: 1fr; } }
+.rpt-procon h3 {
+  font-family: var(--rpt-mono); font-size: 11px; font-weight: 400;
+  letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px;
+}
+.rpt-procon .contra h3 { color: var(--brick); }
+.rpt-procon .pro h3 { color: var(--moss); }
+.rpt-argu-mini {
+  border-radius: var(--radius-s); padding: 10px 12px; margin-bottom: 8px;
+  font-size: 14px; line-height: 1.55; break-inside: avoid;
+}
+.rpt-argu-mini b { display: block; font-family: var(--rpt-display); margin-bottom: 2px; }
+.contra .rpt-argu-mini { background: var(--brick-tint); border: 1px solid color-mix(in srgb, var(--brick) 25%, transparent); }
+.pro .rpt-argu-mini { background: var(--moss-tint); border: 1px solid color-mix(in srgb, var(--moss) 25%, transparent); }
+
+/* --- Hypothesen --- */
+.rpt-hyp-group { margin-bottom: 22px; }
+.rpt-hyp-group:last-child { margin-bottom: 0; }
+.hyp-card {
+  border: 1px solid var(--line); border-radius: var(--radius-s);
+  background: var(--paper-raised); padding: 16px 18px; margin-bottom: 12px; break-inside: avoid;
+}
+.hyp-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 5px; }
+.hyp-title { font-family: var(--rpt-display); font-weight: 700; font-size: 15px; }
+.hyp-key { font-family: var(--rpt-mono); font-weight: 400; color: var(--ink-faint); }
+.hyp-badge {
+  flex: none; font-family: var(--rpt-mono); font-size: 10.5px; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: var(--radius-s);
+}
+.hyp-badge.hoch { background: var(--brick-tint); color: var(--brick); }
+.hyp-badge.mittel { background: var(--ochre-tint); color: var(--ochre); }
+.hyp-badge.niedrig { background: var(--moss-tint); color: var(--moss); }
+.hyp-cost { font-family: var(--rpt-mono); font-size: 12px; color: var(--ink-faint); margin-bottom: 10px; }
+.hyp-text { font-size: 14px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 12px; }
+.hyp-questions { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
+.hyp-questions li { font-size: 13.5px; }
+
+/* --- Sanierungsfahrplan --- */
+.rpt-table-wrap { overflow-x: auto; }
+.rpt-table { width: 100%; border-collapse: collapse; font-size: 13.5px; table-layout: fixed; }
+.rpt-table th {
+  text-align: left; font-family: var(--rpt-mono); font-size: 10.5px; font-weight: 400;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint);
+  padding: 0 10px 8px 0; border-bottom: 1px solid var(--line);
+}
+/* break-word statt anywhere: bricht nur, wenn ein Wort sonst nicht passt –
+   "anywhere" zerlegte sonst normale Wörter mitten im Wort ("Baumaßnah men"). */
+.rpt-table td { padding: 10px 10px 10px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: break-word; }
+.rpt-table tr { break-inside: avoid; }
+/* Die Zielklasse kommt als Freitext ("unverändert F (Planungsschritt …)") und
+   ist oft zu lang für eine Pille – deshalb eingefärbter Text statt Badge. */
+.rpt-eklasse { font-family: var(--rpt-mono); font-size: 11px; line-height: 1.5; }
+.rpt-eklasse.tone-rot { color: var(--brick); }
+.rpt-eklasse.tone-gelb { color: var(--ochre); }
+.rpt-eklasse.tone-gruen { color: var(--moss); }
+.rpt-eklasse.tone-neutral { color: var(--ink-soft); }
+
+/* --- Offene Punkte --- */
+.rpt-offen { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.rpt-offen li { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; }
+.rpt-offen .box { color: var(--ink-faint); flex: none; }
+
+/* --- Haftungsausschluss --- */
+.rpt-disclaimer {
+  margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line);
+  font-size: 12px; color: var(--ink-faint); line-height: 1.6;
 }
