@@ -512,6 +512,19 @@ export function Report({
       </Section>
 
       <Section title="Vorschlag: Sanierungsfahrplan">
+        {/*
+          Abgrenzung zum iSFP: Der Fahrplan nennt an mehreren Stellen den
+          iSFP-Foerderbonus. Ohne diesen Hinweis koennte der Eindruck
+          entstehen, dieser Vorschlag sei bereits ein iSFP - der ist aber ein
+          rechtlich definiertes Dokument einer zugelassenen Energieberatung
+          und Voraussetzung fuer den Bonus.
+        */}
+        <p className="rpt-vorschlag-hinweis">
+          <strong>Das ist ein Vorschlag, kein beauftragter Plan.</strong> Die Reihenfolge ist eine
+          hypothetische Priorisierung auf Basis der Exposé-Angaben und ersetzt keinen individuellen
+          Sanierungsfahrplan (iSFP) im Sinne der BEG-Förderung — ein iSFP muss von einer
+          zugelassenen Energieberatung erstellt werden und ist Voraussetzung für den Förderbonus.
+        </p>
         <div className="rpt-table-wrap">
           <table className="rpt-table">
             <colgroup>

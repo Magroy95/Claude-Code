@@ -24,8 +24,8 @@ const pipelineSchritte = [
     text: "Modernisierungsschritte inkl. iSFP-Logik (Hülle vor Heizung, Förderbonus-Reihenfolge) und voraussichtlicher Energieklassen-Entwicklung.",
   },
   {
-    titel: "Vier-Augen-Prüfung",
-    text: "Eine zweite, unabhängige KI-Instanz prüft den Sanierungsfahrplan auf Reihenfolge- und Plausibilitätsfehler, bevor er in den Report geht.",
+    titel: "Qualitätsschleifen",
+    text: "Mehrere KI-Agenten prüfen das Ergebnis in unabhängigen Durchgängen gegen Reihenfolge, Förderlogik und Plausibilität. Weil jeder Durchgang das Ergebnis der anderen nicht kennt, fallen Falschaussagen auf, bevor sie in den Report gelangen.",
   },
   {
     titel: "Synthese",

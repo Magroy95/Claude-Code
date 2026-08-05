@@ -341,6 +341,15 @@ body {
 .hyp-questions li { font-size: 13.5px; }
 
 /* --- Sanierungsfahrplan --- */
+.rpt-vorschlag-hinweis {
+  border-left: 3px solid var(--blueprint);
+  background: color-mix(in srgb, var(--blueprint) 8%, transparent);
+  padding: 10px 14px; border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  font-size: 13px; color: var(--ink-soft); line-height: 1.6; margin-bottom: 14px;
+  break-inside: avoid;
+}
+.rpt-vorschlag-hinweis strong { color: var(--ink); }
+
 .rpt-table-wrap { overflow-x: auto; }
 .rpt-table { width: 100%; border-collapse: collapse; font-size: 13.5px; table-layout: fixed; }
 .rpt-table th {
