@@ -27,6 +27,7 @@ import {
 } from "./schema";
 import {
   berechneFinanzierungsKennzahlen,
+  berechneKaufnebenkosten,
   instandhaltungsruecklage,
   INSTANDHALTUNG_EUR_PRO_QM_MONAT,
   STANDARD_ZINS,
@@ -138,6 +139,14 @@ async function extraktionAgent(
       "Unterscheidung (ein Verbrauchsausweis basiert auf dem tatsächlichen Heizverhalten der Vorbewohner, nicht auf " +
       "dem berechneten Gebäudebedarf, und ist deshalb weniger belastbar), also nicht einfach 'BEDARF' annehmen, wenn " +
       "es nicht explizit dasteht.\n\n" +
+      "Leite aus Ort und Postleitzahl das Bundesland ab und gib es in bundesland exakt so an, wie es amtlich " +
+      "heißt (z.B. 'Niedersachsen', 'Nordrhein-Westfalen', 'Bremen'). Es wird für die Grunderwerbsteuer " +
+      "gebraucht, die je Bundesland unterschiedlich hoch ist. Nur wenn die Lage keine eindeutige Zuordnung " +
+      "erlaubt, setze null.\n\n" +
+      "Suche außerdem nach der Maklercourtage/Provision und trage in maklerprovisionKaeuferProzent NUR den vom " +
+      "KÄUFER zu zahlenden Anteil in Prozent ein (als Zahl, z.B. 3.57 für '3,57% inkl. MwSt.'). Achtung: Wird " +
+      "eine Gesamtcourtage genannt, die sich Verkäufer und Käufer teilen (z.B. '6% gesamt, je 3% für Verkäufer " +
+      "und Käufer'), dann trage nur den Käuferanteil ein (hier: 3). Steht keine Courtage im Exposé, setze null.\n\n" +
       "Lies außerdem den Beschreibungs-/Ausstattungs-/Lagetext (nicht nur die Tabellenfelder) aufmerksam durch und " +
       "erfasse in besonderheitenAusExpose als Liste kurzer, sachlicher Notizen alles, was dort steht, aber nicht in " +
       "den strukturierten Feldern abgebildet ist oder diesen widerspricht. Achte besonders auf: erwähnte Schäden " +
@@ -303,6 +312,7 @@ async function finanzAgent(
   objektdaten: Objektdaten,
   eigenkapitalEur: number,
   marktwert: MarktwertAgentResult,
+  kaufnebenkostenEur: number,
   kennzahlen: FinanzierungsKennzahlen,
   instandhaltungsruecklageEur: number,
   sanierungsstauMinEur: number,
@@ -340,7 +350,7 @@ async function finanzAgent(
         content:
           `Objektdaten: ${JSON.stringify(objektdaten)}\nEigenkapital: ${eigenkapitalEur} EUR\n` +
           `Orientierungswert: ${marktwert.orientierungswertMinEur}-${marktwert.orientierungswertMaxEur} EUR\n` +
-          `Kaufnebenkosten: ${marktwert.kaufnebenkostenSchaetzungEur} EUR\n\n` +
+          `Kaufnebenkosten: ${kaufnebenkostenEur} EUR\n\n` +
           `Bereits berechnete Zahlen (Standardannahme ${formatProzent(STANDARD_ZINS)} Zins/` +
           `${formatProzent(STANDARD_TILGUNG)} Tilgung, Zinsanstiegs-Stresstest ${formatProzent(STRESS_ZINS)} Zins ` +
           `nach ${ZINSBINDUNG_JAHRE} Jahren, nicht selbst neu berechnen):\n` +
@@ -714,9 +724,16 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
 
     const { sanierungsstauMinEur, sanierungsstauMaxEur } = summiereSanierungsstau(risiko.hypothesen);
     const instandhaltungsruecklageEur = instandhaltungsruecklage(objektdaten.wohnflaecheQm);
+    // Kaufnebenkosten werden gerechnet, nicht geschaetzt (siehe finance.ts).
+    const kaufnebenkosten = berechneKaufnebenkosten({
+      angebotspreisEur: objektdaten.angebotspreisEur,
+      bundesland: objektdaten.bundesland,
+      maklerprovisionKaeuferProzent: objektdaten.maklerprovisionKaeuferProzent,
+      mitMakler: analysis.verkaufsart === "MAKLER",
+    });
     const kennzahlen = berechneFinanzierungsKennzahlen({
       angebotspreisEur: objektdaten.angebotspreisEur,
-      kaufnebenkostenEur: marktwert.kaufnebenkostenSchaetzungEur,
+      kaufnebenkostenEur: kaufnebenkosten.summeEur,
       eigenkapitalEur: analysis.eigenkapital,
     });
 
@@ -726,6 +743,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
           objektdaten,
           analysis.eigenkapital,
           marktwert,
+          kaufnebenkosten.summeEur,
           kennzahlen,
           instandhaltungsruecklageEur,
           sanierungsstauMinEur,
@@ -790,7 +808,16 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       marktEinschaetzung: marktwert.marktEinschaetzung,
       marktwertText: marktwert.marktwertText,
       verhandlungsargumente: marktwert.verhandlungsargumente,
-      kaufnebenkostenSchaetzungEur: marktwert.kaufnebenkostenSchaetzungEur,
+      kaufnebenkostenSchaetzungEur: kaufnebenkosten.summeEur,
+      kaufnebenkostenAufstellung: {
+        grunderwerbsteuerEur: kaufnebenkosten.grunderwerbsteuerEur,
+        grunderwerbsteuerProzent: kaufnebenkosten.grunderwerbsteuerProzent,
+        notarGrundbuchEur: kaufnebenkosten.notarGrundbuchEur,
+        maklerprovisionEur: kaufnebenkosten.maklerprovisionEur,
+        maklerprovisionProzent: kaufnebenkosten.maklerprovisionProzent,
+        bundeslandGeschaetzt: kaufnebenkosten.bundeslandGeschaetzt,
+        maklerprovisionGeschaetzt: kaufnebenkosten.maklerprovisionGeschaetzt,
+      },
       cashflow,
       finanzAnnahmen,
       risikoSzenarien: finanz.risikoSzenarien,

@@ -262,6 +262,7 @@ export function Report({
   const rateUndRuecklageEur =
     report.cashflow.monatlicheAnnuitaetEur + report.cashflow.instandhaltungsruecklageEur;
   const annahmen = report.finanzAnnahmen;
+  const kaufnebenkosten = report.kaufnebenkostenAufstellung;
   const hypothesenByKategorie = (
     ["KAUFENTSCHEIDEND", "KOSTENRELEVANT", "STRATEGISCH"] as const
   ).map((kategorie) => ({
@@ -429,9 +430,42 @@ export function Report({
             <p>{a.text}</p>
           </div>
         ))}
-        <p className="rpt-text" style={{ marginTop: "14px" }}>
-          Kaufnebenkosten (Schätzung): {formatEur(report.kaufnebenkostenSchaetzungEur)}
-        </p>
+        {kaufnebenkosten ? (
+          <div className="rpt-nebenkosten">
+            <p className="rpt-nebenkosten-head">
+              Kaufnebenkosten: {formatEur(report.kaufnebenkostenSchaetzungEur)}
+            </p>
+            <dl className="rpt-nebenkosten-liste">
+              <div>
+                <dt>Grunderwerbsteuer ({formatProzent(kaufnebenkosten.grunderwerbsteuerProzent)})</dt>
+                <dd>{formatEur(kaufnebenkosten.grunderwerbsteuerEur)}</dd>
+              </div>
+              <div>
+                <dt>Notar &amp; Grundbuch</dt>
+                <dd>{formatEur(kaufnebenkosten.notarGrundbuchEur)}</dd>
+              </div>
+              {kaufnebenkosten.maklerprovisionEur > 0 && (
+                <div>
+                  <dt>Maklercourtage ({formatProzent(kaufnebenkosten.maklerprovisionProzent)})</dt>
+                  <dd>{formatEur(kaufnebenkosten.maklerprovisionEur)}</dd>
+                </div>
+              )}
+            </dl>
+            {(kaufnebenkosten.bundeslandGeschaetzt || kaufnebenkosten.maklerprovisionGeschaetzt) && (
+              <p className="rpt-nebenkosten-note">
+                {kaufnebenkosten.bundeslandGeschaetzt &&
+                  "Das Bundesland war aus der Lageangabe nicht eindeutig bestimmbar — für die Grunderwerbsteuer wurde ein Standardsatz angesetzt. "}
+                {kaufnebenkosten.maklerprovisionGeschaetzt &&
+                  "Das Exposé nennt keinen Courtage-Satz — angesetzt ist ein regionsüblicher Wert. "}
+                Bitte vor der Finanzierungsanfrage gegenprüfen.
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="rpt-text" style={{ marginTop: "14px" }}>
+            Kaufnebenkosten (Schätzung): {formatEur(report.kaufnebenkostenSchaetzungEur)}
+          </p>
+        )}
       </Section>
 
       <Section title="Risiko-Stress-Test">

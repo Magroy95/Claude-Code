@@ -45,7 +45,6 @@ export function validateMarktwert(result: MarktwertAgentResult): void {
     result.orientierungswertMaxEur,
   );
   assertNonNegative("Orientierungswert (Minimum)", result.orientierungswertMinEur);
-  assertNonNegative("Kaufnebenkosten-Schätzung", result.kaufnebenkostenSchaetzungEur);
   if (result.verhandlungsargumente.length < 2) {
     throw new ConsistencyError(
       `Nur ${result.verhandlungsargumente.length} Verhandlungsargument(e) statt mindestens 2.`,

@@ -13,6 +13,98 @@ export const STRESS_ZINS = 0.065;
 export const ZINSBINDUNG_JAHRE = 10;
 export const INSTANDHALTUNG_EUR_PRO_QM_MONAT = 2.25;
 
+// --- Kaufnebenkosten -------------------------------------------------------
+// Bewusst gerechnet statt geschätzt: Grunderwerbsteuer, Notar/Grundbuch und
+// Courtage folgen festen Sätzen bzw. stehen im Exposé. Eine Schätzung durch
+// das Sprachmodell schwankte zwischen zwei Läufen desselben Objekts um über
+// 30.000 EUR und verfälschte damit die ausgewiesene Monatsbelastung.
+
+// Grunderwerbsteuersätze der Bundesländer (Stand 2025). Quelle: Landesrecht
+// der jeweiligen Bundesländer; bei Satzänderungen ist das hier der einzige
+// Ort, der angepasst werden muss.
+export const GRUNDERWERBSTEUER_PROZENT: Record<string, number> = {
+  "Baden-Württemberg": 0.05,
+  Bayern: 0.035,
+  Berlin: 0.06,
+  Brandenburg: 0.065,
+  Bremen: 0.05,
+  Hamburg: 0.055,
+  Hessen: 0.06,
+  "Mecklenburg-Vorpommern": 0.06,
+  Niedersachsen: 0.05,
+  "Nordrhein-Westfalen": 0.065,
+  "Rheinland-Pfalz": 0.05,
+  Saarland: 0.065,
+  Sachsen: 0.055,
+  "Sachsen-Anhalt": 0.05,
+  "Schleswig-Holstein": 0.065,
+  Thüringen: 0.05,
+};
+
+// Fällt zurück, wenn das Bundesland nicht bestimmbar ist. Bewusst der
+// häufigste Satz und nicht der niedrigste, damit die Belastung im Zweifel
+// nicht zu günstig dargestellt wird.
+export const GRUNDERWERBSTEUER_STANDARD = 0.05;
+
+// Notarkosten (Beurkundung, Vollzug, Treuhand) plus Grundbucheintragung.
+// Beide sind über GNotKG gebührenrechtlich an den Kaufpreis gekoppelt;
+// 1,5 % ist der gängige Praxiswert für beides zusammen.
+export const NOTAR_GRUNDBUCH_PROZENT = 0.015;
+
+// Üblicher Käuferanteil in Norddeutschland, wenn das Exposé keinen Satz
+// nennt, der Verkauf aber über einen Makler läuft.
+export const MAKLERPROVISION_STANDARD_PROZENT = 0.0357;
+
+export interface KaufnebenkostenAufstellung {
+  grunderwerbsteuerEur: number;
+  grunderwerbsteuerProzent: number;
+  notarGrundbuchEur: number;
+  maklerprovisionEur: number;
+  maklerprovisionProzent: number;
+  summeEur: number;
+  /** true, wenn das Bundesland nicht bestimmbar war und der Standardsatz griff. */
+  bundeslandGeschaetzt: boolean;
+  /** true, wenn das Exposé keinen Courtage-Satz nannte und der Standardsatz griff. */
+  maklerprovisionGeschaetzt: boolean;
+}
+
+export function berechneKaufnebenkosten(params: {
+  angebotspreisEur: number;
+  bundesland: string | null;
+  maklerprovisionKaeuferProzent: number | null;
+  mitMakler: boolean;
+}): KaufnebenkostenAufstellung {
+  const satzAusTabelle = params.bundesland
+    ? GRUNDERWERBSTEUER_PROZENT[params.bundesland.trim()]
+    : undefined;
+  const grunderwerbsteuerProzent = satzAusTabelle ?? GRUNDERWERBSTEUER_STANDARD;
+
+  // Das Exposé nennt den Satz in Prozent (z.B. 3.57), intern rechnen wir mit
+  // Dezimalanteilen.
+  const provisionAusExpose =
+    params.maklerprovisionKaeuferProzent != null && params.maklerprovisionKaeuferProzent > 0
+      ? params.maklerprovisionKaeuferProzent / 100
+      : null;
+  const maklerprovisionProzent = params.mitMakler
+    ? (provisionAusExpose ?? MAKLERPROVISION_STANDARD_PROZENT)
+    : 0;
+
+  const grunderwerbsteuerEur = Math.round(params.angebotspreisEur * grunderwerbsteuerProzent);
+  const notarGrundbuchEur = Math.round(params.angebotspreisEur * NOTAR_GRUNDBUCH_PROZENT);
+  const maklerprovisionEur = Math.round(params.angebotspreisEur * maklerprovisionProzent);
+
+  return {
+    grunderwerbsteuerEur,
+    grunderwerbsteuerProzent,
+    notarGrundbuchEur,
+    maklerprovisionEur,
+    maklerprovisionProzent,
+    summeEur: grunderwerbsteuerEur + notarGrundbuchEur + maklerprovisionEur,
+    bundeslandGeschaetzt: satzAusTabelle === undefined,
+    maklerprovisionGeschaetzt: params.mitMakler && provisionAusExpose === null,
+  };
+}
+
 export interface AnnuitaetParams {
   darlehenEur: number;
   zinsSatz: number;

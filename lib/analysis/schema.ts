@@ -28,6 +28,13 @@ export const objektdatenSchema = z.object({
   energieausweisTyp: energieausweisTypEnum.nullable(),
   heizungstyp: z.string().nullable(),
   angebotspreisEur: z.number(),
+  // Für die Grunderwerbsteuer, die je Bundesland unterschiedlich hoch ist.
+  // Wird aus Ort/PLZ abgeleitet; null, wenn die Lage keine eindeutige
+  // Zuordnung erlaubt – dann greift eine benannte Standardannahme.
+  bundesland: z.string().nullable(),
+  // Vom Käufer zu zahlender Courtage-Anteil in Prozent des Kaufpreises,
+  // inkl. MwSt., so wie im Exposé ausgewiesen. null, wenn nicht angegeben.
+  maklerprovisionKaeuferProzent: z.number().nullable(),
   // Kurze, sachliche Notizen aus dem Beschreibungs-/Fließtext des Exposés
   // (nicht aus den strukturierten Tabellenfeldern), die auf Schäden,
   // Rückbauten, unfertige/nicht nutzbare Räume oder Widersprüche zu den
@@ -99,6 +106,20 @@ export const analysisReportSchema = z.object({
   // durchnummerierten Fließtexts, damit sie als Liste/Karten darstellbar sind.
   verhandlungsargumente: z.array(argumentSchema).min(2).max(5),
   kaufnebenkostenSchaetzungEur: z.number(),
+  // Aufstellung der Kaufnebenkosten. Optional, weil vor der Umstellung auf
+  // eine deterministische Berechnung erzeugte Reports sie nicht haben – dort
+  // stand nur eine Modellschätzung ohne nachvollziehbare Posten.
+  kaufnebenkostenAufstellung: z
+    .object({
+      grunderwerbsteuerEur: z.number(),
+      grunderwerbsteuerProzent: z.number(),
+      notarGrundbuchEur: z.number(),
+      maklerprovisionEur: z.number(),
+      maklerprovisionProzent: z.number(),
+      bundeslandGeschaetzt: z.boolean(),
+      maklerprovisionGeschaetzt: z.boolean(),
+    })
+    .optional(),
   // Bewusst nur vollständig durchgerechnete Posten: Rate und
   // Instandhaltungsrücklage. Laufende Nebenkosten (Grundsteuer,
   // Versicherung, Energie) hängen von Faktoren ab, die nicht im Exposé
@@ -157,7 +178,6 @@ export const marktwertAgentSchema = z.object({
   marktEinschaetzung: z.string(),
   marktwertText: z.string(),
   verhandlungsargumente: z.array(argumentSchema).min(2).max(5),
-  kaufnebenkostenSchaetzungEur: z.number(),
 });
 export type MarktwertAgentResult = z.infer<typeof marktwertAgentSchema>;
 
