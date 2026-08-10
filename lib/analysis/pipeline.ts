@@ -45,7 +45,7 @@ import {
   erzwingeAmpelKonsistenz,
 } from "./consistency";
 import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
-import { bewerteHypothesen } from "./risiko";
+import { bewerteHypothesen, summiereGewerke } from "./risiko";
 
 const DISCLAIMER_HINWEIS =
   "Alle Angaben sind unverbindliche, KI-gestützte Hypothesen auf Basis der bereitgestellten Unterlagen. " +
@@ -279,12 +279,16 @@ async function risikoAgent(
       "WICHTIG – du vergibst KEINE Risikostufe und KEINE Kategorie. Beides wird aus deinen Faktenangaben " +
       "berechnet. Beantworte stattdessen je Hypothese diese sechs Fragen sachlich und nur anhand dessen, was " +
       "im Exposé steht:\n" +
-      "- belegtImExpose: Steht dieser Befund konkret im Exposé (true) oder leitest du ihn nur aus Baujahr/" +
-      "Baualtersklasse ab (false)?\n" +
+      "- belegtImExpose + zitatAusExpose: true NUR, wenn der Befund wörtlich im Exposé steht. Gib die " +
+      "belegende Textstelle in zitatAusExpose wörtlich wieder (ein Satz genügt). Kannst du nichts zitieren, " +
+      "setze belegtImExpose=false und zitatAusExpose=null – aus Baujahr oder Baualtersklasse abgeleitete " +
+      "Annahmen sind ausdrücklich NICHT belegt.\n" +
       "- ursacheGeklaert: Geht es um einen konkreten Schaden? Dann true, wenn dessen Ursache im Exposé " +
       "dokumentiert ist, sonst false. Geht es um keinen Schaden, setze null.\n" +
-      "- folgeschadenMoeglich: Kann daraus ein Folgeschaden an der Bausubstanz entstehen (Feuchte, Schimmel, " +
-      "Statik, Holzschädlinge)?\n" +
+      "- folgeschadenMoeglich: NUR true, wenn im Exposé ein konkreter Anhaltspunkt steht – ein genannter " +
+      "Schaden, eine Schadensbeseitigung, ein Rückbau, Feuchtespuren, ein ungeschütztes Bauteil. Die " +
+      "allgemeine Möglichkeit ('bei Häusern dieses Baujahrs kann immer Feuchte auftreten') reicht " +
+      "AUSDRÜCKLICH NICHT und ist mit false zu beantworten.\n" +
       "- rechtlichUngeklaert: Ist eine Genehmigung, das Baurecht oder der Bestandsschutz offen (z.B. " +
       "Einliegerwohnung, Umnutzung, Anbau ohne erkennbare Genehmigung)?\n" +
       "- gesetzlicheFrist: Erzwingt eine gesetzliche Regel (GEG, EU-EPBD) absehbar eine Maßnahme?\n" +
@@ -301,6 +305,14 @@ async function risikoAgent(
       "teurere Alternativen (WDVS/Außendämmung oder Innendämmung mit Tauwasser-/Schimmelrisiko) nötig sind? " +
       "Nenne diese Unterscheidung explizit in der Hypothese und nimm 'Mauerwerksaufbau (ein-/zweischalig, " +
       "Hohlraum vorhanden?) prüfen bzw. beim Verkäufer/Bauakte erfragen' als Prüffrage auf.\n\n" +
+      "Erstelle ZUSÄTZLICH die Gewerke-Checkliste: genau acht Einträge, für jedes Gewerk exakt einen – DACH, " +
+      "FASSADE, FENSTER, HEIZUNG, ELEKTRO, SANITAER, INNENAUSBAU, SCHADSTOFFE. Je Gewerk genau ein Status:\n" +
+      "- ERNEUERT: Das Exposé sagt, dass dieses Gewerk erneuert/modernisiert wurde. kostenMinEur/MaxEur = null.\n" +
+      "- HANDLUNGSBEDARF: Aufwand ist absehbar. Setze eine realistische Kostenspanne in kostenMinEur/MaxEur.\n" +
+      "- NICHT_BEURTEILBAR: Die Unterlagen geben dazu nichts her. kostenMinEur/MaxEur = null.\n" +
+      "Begründe jeden Eintrag in einem Satz. Nutze NICHT_BEURTEILBAR nur, wenn wirklich nichts ableitbar ist – " +
+      "aus Baujahr und Energiekennwerten lässt sich für die meisten Gewerke ein Rahmen begründen. Diese Liste " +
+      "wird zum Sanierungsstau aufsummiert, die Kostenspannen müssen also belastbar sein.\n\n" +
       "WICHTIG: objektdaten.besonderheitenAusExpose enthält Notizen aus dem Fließtext des Exposés (Schäden, " +
       "Rückbauten, unfertige Räume, Widersprüche zu Tabellenfeldern). Für JEDE Notiz darin MUSST du eine eigene " +
       "Hypothese mit konkreten Prüffragen " +
@@ -613,17 +625,6 @@ function wendeGesamtPruefungAn(
   return finalReport;
 }
 
-function summiereSanierungsstau(hypothesen: Hypothese[]): {
-  sanierungsstauMinEur: number;
-  sanierungsstauMaxEur: number;
-} {
-  const bezifferbar = hypothesen.filter((h) => h.kategorie !== "STRATEGISCH");
-  return {
-    sanierungsstauMinEur: bezifferbar.reduce((summe, h) => summe + (h.kostenMinEur ?? 0), 0),
-    sanierungsstauMaxEur: bezifferbar.reduce((summe, h) => summe + (h.kostenMaxEur ?? 0), 0),
-  };
-}
-
 async function loadExposeContentBlock(analysisId: string) {
   const attachment = await prisma.attachment.findFirst({
     where: { analysisId, kind: "EXPOSE" },
@@ -739,7 +740,15 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     // nicht vom Modell vergeben (siehe risiko.ts).
     const hypothesen = bewerteHypothesen(risiko.hypothesen, objektdaten.angebotspreisEur);
 
-    const { sanierungsstauMinEur, sanierungsstauMaxEur } = summiereSanierungsstau(hypothesen);
+    const { sanierungsstauMinEur, sanierungsstauMaxEur, nichtBeurteilbar } = summiereGewerke(
+      risiko.gewerke,
+    );
+    if (nichtBeurteilbar.length > 0) {
+      console.warn(
+        `[HauskaufChecker] Analyse ${analysisId}: ${nichtBeurteilbar.length} Gewerk(e) nicht beurteilbar:`,
+        nichtBeurteilbar,
+      );
+    }
     const instandhaltungsruecklageEur = instandhaltungsruecklage(objektdaten.wohnflaecheQm);
     // Kaufnebenkosten werden gerechnet, nicht geschaetzt (siehe finance.ts).
     const kaufnebenkosten = berechneKaufnebenkosten({
@@ -841,6 +850,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       argumenteContra: synthese.argumenteContra,
       argumentePro: synthese.argumentePro,
       hypothesen,
+      gewerke: risiko.gewerke,
       sanierungsstauMinEur,
       sanierungsstauMaxEur,
       sanierungsfahrplan: pruefung.sanierungsfahrplan,

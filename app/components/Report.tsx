@@ -42,6 +42,23 @@ const KATEGORIE_SLUG: Record<Hypothese["kategorie"], string> = {
   STRATEGISCH: "kat-strategisch",
 };
 
+const GEWERK_LABEL: Record<string, string> = {
+  DACH: "Dach",
+  FASSADE: "Fassade / Außenwand",
+  FENSTER: "Fenster",
+  HEIZUNG: "Heizung & Warmwasser",
+  ELEKTRO: "Elektroinstallation",
+  SANITAER: "Sanitär & Leitungen",
+  INNENAUSBAU: "Innenausbau",
+  SCHADSTOFFE: "Schadstoffe",
+};
+
+const GEWERK_STATUS_LABEL: Record<string, string> = {
+  ERNEUERT: "Erneuert",
+  HANDLUNGSBEDARF: "Handlungsbedarf",
+  NICHT_BEURTEILBAR: "Nicht beurteilbar",
+};
+
 const RISIKO_CLASS: Record<Hypothese["risiko"], string> = {
   HOCH: "hoch",
   MITTEL: "mittel",
@@ -238,6 +255,9 @@ function HypotheseCard({ h }: { h: Hypothese }) {
           {h.risikoBegruendung.join(" · ")}
         </p>
       )}
+      {h.zitatAusExpose && (
+        <blockquote className="hyp-zitat">&bdquo;{h.zitatAusExpose}&ldquo;</blockquote>
+      )}
       <p className="hyp-text">{h.hypothese}</p>
       <ul className="hyp-questions">
         {h.pruefragen.map((frage, i) => (
@@ -269,6 +289,7 @@ export function Report({
     report.cashflow.monatlicheAnnuitaetEur + report.cashflow.instandhaltungsruecklageEur;
   const annahmen = report.finanzAnnahmen;
   const kaufnebenkosten = report.kaufnebenkostenAufstellung;
+  const gewerke = report.gewerke;
   const hypothesenByKategorie = (
     ["KAUFENTSCHEIDEND", "KOSTENRELEVANT", "STRATEGISCH"] as const
   ).map((kategorie) => ({
@@ -550,6 +571,52 @@ export function Report({
             ),
         )}
       </Section>
+
+      {gewerke && gewerke.length > 0 && (
+        <Section title="Gewerke-Checkliste">
+          <p className="rpt-text" style={{ marginBottom: "14px" }}>
+            Jedes Gewerk wird bei jedem Objekt beurteilt — auch dann, wenn die Unterlagen nichts
+            hergeben. So ist erkennbar, was tatsächlich geprüft werden konnte und wo eine Lücke
+            bleibt. Der geschätzte Sanierungsstau ist die Summe der Positionen mit Handlungsbedarf.
+          </p>
+          <div className="rpt-table-wrap">
+            <table className="rpt-table">
+              <colgroup>
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "22%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "40%" }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Gewerk</th>
+                  <th>Status</th>
+                  <th>Kostenrahmen</th>
+                  <th>Einschätzung</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gewerke.map((g) => (
+                  <tr key={g.gewerk}>
+                    <td>{GEWERK_LABEL[g.gewerk]}</td>
+                    <td>
+                      <span className={`gewerk-status status-${g.status.toLowerCase()}`}>
+                        {GEWERK_STATUS_LABEL[g.status]}
+                      </span>
+                    </td>
+                    <td>
+                      {g.status === "HANDLUNGSBEDARF" && g.kostenMinEur !== null && g.kostenMaxEur !== null
+                        ? `${formatEur(g.kostenMinEur)}–${formatEur(g.kostenMaxEur)}`
+                        : "–"}
+                    </td>
+                    <td>{g.begruendung}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
 
       <Section title="Vorschlag: Sanierungsfahrplan">
         {/*

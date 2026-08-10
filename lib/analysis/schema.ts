@@ -45,6 +45,48 @@ export const objektdatenSchema = z.object({
 });
 export type Objektdaten = z.infer<typeof objektdatenSchema>;
 
+// --- Gewerke-Checkliste ----------------------------------------------------
+// Feste Positionen, die bei JEDEM Objekt beurteilt werden. Grund: Der
+// Sanierungsstau wurde bisher aus der Hypothesenliste summiert, deren Umfang
+// zwischen Läufen schwankte (8 bis 12 bezifferte Posten) – das allein
+// erklärte die Streuung von 151.000 bis 238.000 EUR beim selben Objekt. Die
+// Kostenspannen je Gewerk waren dabei bemerkenswert stabil (Elektro in allen
+// Läufen exakt 8.000–20.000 EUR). Nicht die Beträge schwankten also, sondern
+// welche Gewerke überhaupt auftauchten. Eine feste Liste beseitigt das.
+export const gewerkEnum = z.enum([
+  "DACH",
+  "FASSADE",
+  "FENSTER",
+  "HEIZUNG",
+  "ELEKTRO",
+  "SANITAER",
+  "INNENAUSBAU",
+  "SCHADSTOFFE",
+]);
+export type Gewerk = z.infer<typeof gewerkEnum>;
+
+/** Alle Gewerke in Reihenfolge – die Checkliste muss vollständig sein. */
+export const ALLE_GEWERKE = gewerkEnum.options;
+
+export const gewerkStatusEnum = z.enum([
+  /** Laut Exposé bereits erneuert – kein Kostenansatz. */
+  "ERNEUERT",
+  /** Handlungsbedarf absehbar – mit Kostenspanne. */
+  "HANDLUNGSBEDARF",
+  /** Aus den Unterlagen nicht beurteilbar – wird als Lücke ausgewiesen. */
+  "NICHT_BEURTEILBAR",
+]);
+
+export const gewerkBefundSchema = z.object({
+  gewerk: gewerkEnum,
+  status: gewerkStatusEnum,
+  // Nur bei HANDLUNGSBEDARF gesetzt, sonst null.
+  kostenMinEur: z.number().nullable(),
+  kostenMaxEur: z.number().nullable(),
+  begruendung: z.string(),
+});
+export type GewerkBefund = z.infer<typeof gewerkBefundSchema>;
+
 // Die nachprüfbaren Fakten je Hypothese. Das Modell beantwortet nur noch
 // diese Fragen; Risikostufe und Kategorie werden daraus deterministisch
 // berechnet (lib/analysis/risiko.ts). Grund: Bei fünf Läufen desselben
@@ -65,6 +107,13 @@ export const hypotheseFaktenSchema = z.object({
   pruefragen: z.array(z.string()).min(1),
   /** Konkret im Exposé dokumentiert – nicht bloß aus der Baualtersklasse abgeleitet. */
   belegtImExpose: z.boolean(),
+  /**
+   * Wörtliche Textstelle aus dem Exposé, die den Befund belegt. Ohne Zitat
+   * wird belegtImExpose programmatisch auf false gesetzt: Die Angabe war
+   * zuvor bei 79 % der Hypothesen wahr und damit wertlos – ein erzwungener
+   * Beleg macht sie überprüfbar. null, wenn nichts zitierbar ist.
+   */
+  zitatAusExpose: z.string().nullable(),
   /** Bei einem Schadensbefund: Ursache dokumentiert? null, wenn es um keinen Schaden geht. */
   ursacheGeklaert: z.boolean().nullable(),
   /** Kann daraus ein Folgeschaden an der Substanz entstehen (Feuchte, Schimmel, Statik)? */
@@ -185,8 +234,11 @@ export const analysisReportSchema = z.object({
   argumenteContra: z.array(argumentSchema).min(1),
   argumentePro: z.array(argumentSchema).min(1),
   hypothesen: z.array(hypotheseSchema).min(1),
-  // Summe aus hypothesen[].kostenMinEur/kostenMaxEur (KAUFENTSCHEIDEND +
-  // KOSTENRELEVANT), in der Pipeline berechnet statt vom LLM erfragt.
+  // Gewerke-Checkliste. Optional, weil vor der Umstellung erzeugte Reports
+  // sie nicht haben.
+  gewerke: z.array(gewerkBefundSchema).optional(),
+  // Summe der Gewerke mit Handlungsbedarf, in der Pipeline berechnet statt
+  // vom LLM erfragt.
   sanierungsstauMinEur: z.number(),
   sanierungsstauMaxEur: z.number(),
   sanierungsfahrplan: z.array(sanierungsSchrittSchema).min(1),
@@ -222,6 +274,9 @@ export const risikoAgentSchema = z.object({
   // Bewusst ohne risiko/kategorie: Beides wird aus den Fakten berechnet,
   // damit gleiche Fakten zwingend zur gleichen Einstufung führen.
   hypothesen: z.array(hypotheseFaktenSchema).min(1),
+  // Feste Checkliste, immer vollständig – der Sanierungsstau wird daraus
+  // summiert statt aus den Hypothesen.
+  gewerke: z.array(gewerkBefundSchema).length(8),
 });
 export type RisikoAgentResult = z.infer<typeof risikoAgentSchema>;
 

@@ -16,6 +16,7 @@ import type {
   AnalysisReport,
   Hypothese,
 } from "./schema";
+import { ALLE_GEWERKE } from "./schema";
 
 export class ConsistencyError extends Error {
   constructor(message: string) {
@@ -80,6 +81,32 @@ export function validateHypothesen(hypothesen: PruefbareHypothese[]): void {
 
 export function validateRisiko(result: RisikoAgentResult): void {
   validateHypothesen(result.hypothesen);
+  validateGewerke(result.gewerke);
+}
+
+// Die Checkliste ist nur dann ein Stabilitätsgewinn, wenn sie wirklich
+// vollständig ist – fehlt ein Gewerk, fehlt sein Kostenanteil im
+// Sanierungsstau, und genau das sollte die Liste ja verhindern.
+export function validateGewerke(gewerke: RisikoAgentResult["gewerke"]): void {
+  const gesehen = new Set(gewerke.map((g) => g.gewerk));
+  const fehlend = ALLE_GEWERKE.filter((g) => !gesehen.has(g));
+  if (fehlend.length > 0) {
+    throw new ConsistencyError(`Gewerke-Checkliste unvollständig, es fehlen: ${fehlend.join(", ")}.`);
+  }
+  if (gesehen.size !== gewerke.length) {
+    throw new ConsistencyError("Gewerke-Checkliste enthält ein Gewerk mehrfach.");
+  }
+  for (const g of gewerke) {
+    if (g.status === "HANDLUNGSBEDARF") {
+      if (g.kostenMinEur === null || g.kostenMaxEur === null) {
+        throw new ConsistencyError(
+          `Gewerk ${g.gewerk} ist als HANDLUNGSBEDARF markiert, hat aber keine Kostenspanne.`,
+        );
+      }
+      assertRange(`Gewerk ${g.gewerk} Kostenspanne`, g.kostenMinEur, g.kostenMaxEur);
+      assertNonNegative(`Gewerk ${g.gewerk} Kosten-Minimum`, g.kostenMinEur);
+    }
+  }
 }
 
 export function validateFinanz(result: FinanzAgentResult): void {

@@ -21,7 +21,7 @@
 // von einem einzigen Objekt und sollten nachjustiert werden, sobald Daten
 // von mehreren Objekten vorliegen.
 
-import type { HypotheseFakten, Hypothese } from "./schema";
+import type { HypotheseFakten, Hypothese, GewerkBefund, Gewerk } from "./schema";
 
 // Schwellen und Gewichte sind an 62 Hypothesen aus fünf Läufen kalibriert.
 // Erste Fassung (5/2, alle Faktoren gleich stark) stufte 61 % aller
@@ -34,6 +34,18 @@ import type { HypotheseFakten, Hypothese } from "./schema";
 export const SCHWELLE_HOCH = 6;
 /** Ab dieser Punktzahl gilt eine Hypothese als mittleres Risiko. */
 export const SCHWELLE_MITTEL = 3;
+
+/**
+ * Ein Befund gilt nur als belegt, wenn eine wörtliche Textstelle mitgeliefert
+ * wurde. Ohne Zitat ist die Behauptung nicht überprüfbar und wird verworfen –
+ * unabhängig davon, was das Modell im Flag behauptet.
+ */
+export function istBelegt(fakten: {
+  belegtImExpose: boolean;
+  zitatAusExpose?: string | null;
+}): boolean {
+  return fakten.belegtImExpose && (fakten.zitatAusExpose ?? "").trim().length > 0;
+}
 
 export interface RisikoBewertung {
   risiko: Hypothese["risiko"];
@@ -65,6 +77,7 @@ export function bewerteRisiko(
     | "kostenMinEur"
     | "kostenMaxEur"
     | "belegtImExpose"
+    | "zitatAusExpose"
     | "ursacheGeklaert"
     | "folgeschadenMoeglich"
     | "rechtlichUngeklaert"
@@ -116,10 +129,11 @@ export function bewerteRisiko(
     punkte += 1;
     begruendung.push("Gesetzlicher Handlungsdruck (GEG/EU-EPBD) (+1)");
   }
-  // belegtImExpose fließt bewusst NICHT in die Punkte ein: Es wird bei 79 %
-  // der Hypothesen bejaht und trennt damit praktisch nicht. Der Hinweis
-  // bleibt in der Begründung, weil er für den Leser dennoch relevant ist.
-  if (fakten.belegtImExpose) {
+  // belegtImExpose fließt bewusst NICHT in die Punkte ein: Es wurde bei 79 %
+  // der Hypothesen bejaht und trennte damit praktisch nicht. Seit der
+  // Zitatpflicht ist die Angabe überprüfbar; ob sie danach wieder Punkte
+  // verdient, wird nach der nächsten Messung entschieden.
+  if (istBelegt(fakten)) {
     begruendung.push("Im Exposé konkret dokumentiert, nicht nur aus dem Baujahr abgeleitet");
   }
 
@@ -166,4 +180,21 @@ export function bewerteHypothesen(
       risikoBegruendung: bewertung.begruendung,
     };
   });
+}
+
+// --- Sanierungsstau aus der Gewerke-Checkliste ------------------------------
+// Summiert ausschließlich Gewerke mit Handlungsbedarf. Da die Checkliste
+// immer alle acht Positionen enthält, kann kein Gewerk mehr fehlen – genau
+// das war zuvor die Hauptursache der Streuung.
+export function summiereGewerke(gewerke: GewerkBefund[]): {
+  sanierungsstauMinEur: number;
+  sanierungsstauMaxEur: number;
+  nichtBeurteilbar: Gewerk[];
+} {
+  const mitBedarf = gewerke.filter((g) => g.status === "HANDLUNGSBEDARF");
+  return {
+    sanierungsstauMinEur: mitBedarf.reduce((s, g) => s + (g.kostenMinEur ?? 0), 0),
+    sanierungsstauMaxEur: mitBedarf.reduce((s, g) => s + (g.kostenMaxEur ?? 0), 0),
+    nichtBeurteilbar: gewerke.filter((g) => g.status === "NICHT_BEURTEILBAR").map((g) => g.gewerk),
+  };
 }

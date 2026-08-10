@@ -401,3 +401,20 @@ body {
   color: var(--ink-faint); margin-bottom: 10px;
 }
 .hyp-begruendung-label { text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* --- Gewerke-Checkliste --- */
+.gewerk-status {
+  font-family: var(--rpt-mono); font-size: 10.5px; letter-spacing: 0.04em;
+  text-transform: uppercase; padding: 3px 8px; border-radius: var(--radius-s); white-space: nowrap;
+}
+.gewerk-status.status-handlungsbedarf { background: var(--ochre-tint); color: var(--ochre); }
+.gewerk-status.status-erneuert { background: var(--moss-tint); color: var(--moss); }
+.gewerk-status.status-nicht_beurteilbar { background: var(--paper-sunken); color: var(--ink-faint); }
+
+/* --- Beleg-Zitat aus dem Exposé --- */
+.hyp-zitat {
+  margin: 0 0 10px; padding: 8px 12px;
+  border-left: 3px solid var(--blueprint);
+  background: color-mix(in srgb, var(--blueprint) 7%, transparent);
+  font-size: 13px; font-style: italic; color: var(--ink-soft); line-height: 1.55;
+}
