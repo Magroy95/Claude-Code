@@ -283,8 +283,13 @@ async function risikoAgent(
       "belegende Textstelle in zitatAusExpose wörtlich wieder (ein Satz genügt). Kannst du nichts zitieren, " +
       "setze belegtImExpose=false und zitatAusExpose=null – aus Baujahr oder Baualtersklasse abgeleitete " +
       "Annahmen sind ausdrücklich NICHT belegt.\n" +
-      "- ursacheGeklaert: Geht es um einen konkreten Schaden? Dann true, wenn dessen Ursache im Exposé " +
-      "dokumentiert ist, sonst false. Geht es um keinen Schaden, setze null.\n" +
+      "- ursacheGeklaert: Diese Frage gilt AUSSCHLIESSLICH für einen bereits eingetretenen Schaden, der im " +
+      "Exposé benannt wird – z.B. Wasserschaden, Schadensbeseitigung, Rückbau nach einem Schaden, Riss, " +
+      "Leckage, Feuchtigkeit, Schimmel. Nur dann: true, wenn die Ursache im Exposé dokumentiert ist, sonst " +
+      "false. Eine Einrichtung oder Nutzung, die künftig einen Schaden verursachen KÖNNTE (z.B. Sauna, Kamin, " +
+      "Pool, Flachdach, offene Elektroinstallation), ist AUSDRÜCKLICH KEIN Schaden – dann null. Ebenso null " +
+      "bei Alterung, Verschleiß und energetischem Sanierungsbedarf ohne benanntes Schadensereignis. Im " +
+      "Zweifel null.\n" +
       "- folgeschadenMoeglich: NUR true, wenn im Exposé ein konkreter Anhaltspunkt steht – ein genannter " +
       "Schaden, eine Schadensbeseitigung, ein Rückbau, Feuchtespuren, ein ungeschütztes Bauteil. Die " +
       "allgemeine Möglichkeit ('bei Häusern dieses Baujahrs kann immer Feuchte auftreten') reicht " +

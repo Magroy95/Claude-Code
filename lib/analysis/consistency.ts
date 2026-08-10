@@ -134,6 +134,17 @@ export function validateFinanz(result: FinanzAgentResult): void {
 // ausgelegt.
 const MIN_HOCH_RISIKO_KAUFENTSCHEIDEND_FUER_ROT = 2;
 
+// Zweiter, unabhängiger Auslöser: ein einzelner im Exposé dokumentierter
+// Schaden, dessen Ursache nicht dokumentiert ist und bei dem ein
+// Folgeschaden an der Substanz möglich ist. Die Kombination ist genau der
+// Fall, in dem sich die Kosten vor dem Kauf nicht nach oben begrenzen
+// lassen – die Zahl der übrigen Hypothesen ändert daran nichts, deshalb
+// reicht hier eine. Die Regel steht neben der Zählregel oben, sie ersetzt
+// sie nicht.
+function hatUngeklaertenSchadenMitFolgerisiko(hypothesen: Hypothese[]): boolean {
+  return hypothesen.some((h) => h.ursacheGeklaert === false && h.folgeschadenMoeglich === true);
+}
+
 export function erzwingeAmpelKonsistenz(
   ampel: AnalysisReport["ampel"],
   hypothesen: Hypothese[],
@@ -141,7 +152,10 @@ export function erzwingeAmpelKonsistenz(
   const anzahlHochRisikoKaufentscheidend = hypothesen.filter(
     (h) => h.kategorie === "KAUFENTSCHEIDEND" && h.risiko === "HOCH",
   ).length;
-  if (anzahlHochRisikoKaufentscheidend >= MIN_HOCH_RISIKO_KAUFENTSCHEIDEND_FUER_ROT && ampel !== "ROT") {
+  const rotErzwungen =
+    anzahlHochRisikoKaufentscheidend >= MIN_HOCH_RISIKO_KAUFENTSCHEIDEND_FUER_ROT ||
+    hatUngeklaertenSchadenMitFolgerisiko(hypothesen);
+  if (rotErzwungen && ampel !== "ROT") {
     return { ampel: "ROT", wurdeKorrigiert: true };
   }
   return { ampel, wurdeKorrigiert: false };
