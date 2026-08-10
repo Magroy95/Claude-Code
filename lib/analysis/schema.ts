@@ -45,9 +45,15 @@ export const objektdatenSchema = z.object({
 });
 export type Objektdaten = z.infer<typeof objektdatenSchema>;
 
-export const hypotheseSchema = z.object({
+// Die nachprüfbaren Fakten je Hypothese. Das Modell beantwortet nur noch
+// diese Fragen; Risikostufe und Kategorie werden daraus deterministisch
+// berechnet (lib/analysis/risiko.ts). Grund: Bei fünf Läufen desselben
+// Exposés schwankte die frei vergebene Risikostufe zwischen 0 und 3
+// HOCH-Einstufungen, was die Ampel mitkippen ließ – während die Fakten
+// selbst ("steht der Befund im Exposé?", "ist die Genehmigung geklärt?")
+// deutlich stabiler zu beantworten sind.
+export const hypotheseFaktenSchema = z.object({
   key: z.string(),
-  kategorie: hypothesenKategorie,
   titel: z.string(),
   kostenrahmenText: z.string(),
   // Numerische Entsprechung von kostenrahmenText (in EUR, ohne Formatierung),
@@ -57,9 +63,40 @@ export const hypotheseSchema = z.object({
   kostenMaxEur: z.number().nullable(),
   hypothese: z.string(),
   pruefragen: z.array(z.string()).min(1),
-  risiko: risikoLevel,
+  /** Konkret im Exposé dokumentiert – nicht bloß aus der Baualtersklasse abgeleitet. */
+  belegtImExpose: z.boolean(),
+  /** Bei einem Schadensbefund: Ursache dokumentiert? null, wenn es um keinen Schaden geht. */
+  ursacheGeklaert: z.boolean().nullable(),
+  /** Kann daraus ein Folgeschaden an der Substanz entstehen (Feuchte, Schimmel, Statik)? */
+  folgeschadenMoeglich: z.boolean(),
+  /** Genehmigung, Baurecht oder Bestandsschutz ungeklärt? */
+  rechtlichUngeklaert: z.boolean(),
+  /** Erzwingt eine gesetzliche Regel (GEG, EU-EPBD) absehbar Handlung? */
+  gesetzlicheFrist: z.boolean(),
+  /** Bei einer normalen Besichtigung klärbar – oder braucht es Gutachten, Bauakte, Behörde? */
+  vorOrtKlaerbar: z.boolean(),
 });
+
+// Die Fakten sind optional, damit vor der Umstellung gespeicherte Reports
+// weiterhin geparst werden können; risiko und kategorie sind im fertigen
+// Report immer gesetzt (berechnet).
+export const hypotheseSchema = hypotheseFaktenSchema
+  .partial({
+    belegtImExpose: true,
+    ursacheGeklaert: true,
+    folgeschadenMoeglich: true,
+    rechtlichUngeklaert: true,
+    gesetzlicheFrist: true,
+    vorOrtKlaerbar: true,
+  })
+  .extend({
+    kategorie: hypothesenKategorie,
+    risiko: risikoLevel,
+    /** Nachvollziehbare Herleitung der berechneten Stufe. Fehlt bei Alt-Reports. */
+    risikoBegruendung: z.array(z.string()).optional(),
+  });
 export type Hypothese = z.infer<typeof hypotheseSchema>;
+export type HypotheseFakten = z.infer<typeof hypotheseFaktenSchema>;
 
 export const sanierungsSchrittSchema = z.object({
   zeitpunkt: z.string(),
@@ -182,7 +219,9 @@ export const marktwertAgentSchema = z.object({
 export type MarktwertAgentResult = z.infer<typeof marktwertAgentSchema>;
 
 export const risikoAgentSchema = z.object({
-  hypothesen: z.array(hypotheseSchema).min(1),
+  // Bewusst ohne risiko/kategorie: Beides wird aus den Fakten berechnet,
+  // damit gleiche Fakten zwingend zur gleichen Einstufung führen.
+  hypothesen: z.array(hypotheseFaktenSchema).min(1),
 });
 export type RisikoAgentResult = z.infer<typeof risikoAgentSchema>;
 

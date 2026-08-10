@@ -52,7 +52,18 @@ export function validateMarktwert(result: MarktwertAgentResult): void {
   }
 }
 
-export function validateHypothesen(hypothesen: RisikoAgentResult["hypothesen"]): void {
+// Bewusst strukturell typisiert statt an RisikoAgentResult gebunden: Die
+// Prüfung läuft sowohl über die reinen Faktenangaben des Agenten als auch
+// über die fertigen, um Stufe und Kategorie ergänzten Hypothesen des Reports.
+type PruefbareHypothese = {
+  key: string;
+  titel: string;
+  kostenMinEur: number | null;
+  kostenMaxEur: number | null;
+  pruefragen: string[];
+};
+
+export function validateHypothesen(hypothesen: PruefbareHypothese[]): void {
   const keys = new Set<string>();
   for (const h of hypothesen) {
     assertRange(`Hypothese ${h.key} ("${h.titel}") Kostenrahmen`, h.kostenMinEur, h.kostenMaxEur);

@@ -45,6 +45,7 @@ import {
   erzwingeAmpelKonsistenz,
 } from "./consistency";
 import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
+import { bewerteHypothesen } from "./risiko";
 
 const DISCLAIMER_HINWEIS =
   "Alle Angaben sind unverbindliche, KI-gestützte Hypothesen auf Basis der bereitgestellten Unterlagen. " +
@@ -269,13 +270,26 @@ async function risikoAgent(
     system:
       PERSONA_PREAMBLE +
       "\n\nDu bist in diesem Schritt der Bausachverständige (Ersteinschätzung auf Basis von Exposé-Daten, keine " +
-      "Vor-Ort-Prüfung). Formuliere priorisierte Hypothesen zu Substanz- und Kostenrisiken, gruppiert in die " +
-      "Kategorien KAUFENTSCHEIDEND, KOSTENRELEVANT und STRATEGISCH. Jede Hypothese braucht einen Kostenrahmen " +
+      "Vor-Ort-Prüfung). Formuliere priorisierte Hypothesen zu Substanz- und Kostenrisiken. Jede Hypothese braucht einen Kostenrahmen " +
       "als Text (z.B. '25.000–45.000 EUR') UND denselben Kostenrahmen als Zahlen in kostenMinEur/kostenMaxEur " +
       "(ohne Formatierung, z.B. 25000 und 45000) – diese Zahlen werden programmatisch zum geschätzten " +
       "Sanierungsstau aufsummiert, müssen also exakt zu kostenrahmenText passen. Ist ein Kostenrahmen nicht " +
       "direkt bezifferbar (z.B. reines Verhandlungspotenzial), setze kostenMinEur/kostenMaxEur auf null. " +
-      "Außerdem: konkrete Prüffragen für die Besichtigung und eine Risikostufe. " +
+      "Außerdem: konkrete Prüffragen für die Besichtigung.\n\n" +
+      "WICHTIG – du vergibst KEINE Risikostufe und KEINE Kategorie. Beides wird aus deinen Faktenangaben " +
+      "berechnet. Beantworte stattdessen je Hypothese diese sechs Fragen sachlich und nur anhand dessen, was " +
+      "im Exposé steht:\n" +
+      "- belegtImExpose: Steht dieser Befund konkret im Exposé (true) oder leitest du ihn nur aus Baujahr/" +
+      "Baualtersklasse ab (false)?\n" +
+      "- ursacheGeklaert: Geht es um einen konkreten Schaden? Dann true, wenn dessen Ursache im Exposé " +
+      "dokumentiert ist, sonst false. Geht es um keinen Schaden, setze null.\n" +
+      "- folgeschadenMoeglich: Kann daraus ein Folgeschaden an der Bausubstanz entstehen (Feuchte, Schimmel, " +
+      "Statik, Holzschädlinge)?\n" +
+      "- rechtlichUngeklaert: Ist eine Genehmigung, das Baurecht oder der Bestandsschutz offen (z.B. " +
+      "Einliegerwohnung, Umnutzung, Anbau ohne erkennbare Genehmigung)?\n" +
+      "- gesetzlicheFrist: Erzwingt eine gesetzliche Regel (GEG, EU-EPBD) absehbar eine Maßnahme?\n" +
+      "- vorOrtKlaerbar: Lässt sich das bei einer normalen Besichtigung klären (true), oder braucht es " +
+      "Gutachten, Bauakte, Messung oder eine Behördenauskunft (false)?\n\n" +
       "Nutze Baujahr, Energieklasse und Heizungstyp, um typische Schwachstellen der Baualtersklasse abzuleiten " +
       "(z.B. Asbest, Elektrik, GEG/EU-EPBD-Sanierungspflichten). Verwende durchgehend das vorgegebene " +
       "Hypothesen-Framing statt Tatsachenbehauptungen.\n\n" +
@@ -289,7 +303,7 @@ async function risikoAgent(
       "Hohlraum vorhanden?) prüfen bzw. beim Verkäufer/Bauakte erfragen' als Prüffrage auf.\n\n" +
       "WICHTIG: objektdaten.besonderheitenAusExpose enthält Notizen aus dem Fließtext des Exposés (Schäden, " +
       "Rückbauten, unfertige Räume, Widersprüche zu Tabellenfeldern). Für JEDE Notiz darin MUSST du eine eigene " +
-      "Hypothese (meist KAUFENTSCHEIDEND oder KOSTENRELEVANT, je nach Tragweite) mit konkreten Prüffragen " +
+      "Hypothese mit konkreten Prüffragen " +
       "aufnehmen – das sind vom Verkäufer/Makler selbst offengelegte Sachverhalte, die nicht untergehen dürfen, " +
       "nur weil sie im Fließtext statt in einer Tabelle standen." +
       energieausweisHinweisText(objektdaten),
@@ -299,7 +313,7 @@ async function risikoAgent(
         content:
           `Objektdaten: ${JSON.stringify(objektdaten)}` +
           (freitext ? `\nBesonderheiten/Mängel laut Nutzer: ${freitext}` : "") +
-          "\n\nErstelle die priorisierte Hypothesenliste mit eindeutigen keys (K1, K2, ..., C1, C2, ..., S1, S2, ...).",
+          "\n\nErstelle die priorisierte Hypothesenliste mit eindeutigen keys (H1, H2, H3, ...).",
       },
     ],
     output_config: { format: zodOutputFormat(risikoAgentSchema), effort: "high" },
@@ -721,8 +735,11 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       await speichereCheckpointSchritt(analysisId, "risiko", checkpoint.risiko);
     }
     const risiko = checkpoint.risiko;
+    // Risikostufe und Kategorie werden hier aus den Faktenangaben berechnet,
+    // nicht vom Modell vergeben (siehe risiko.ts).
+    const hypothesen = bewerteHypothesen(risiko.hypothesen, objektdaten.angebotspreisEur);
 
-    const { sanierungsstauMinEur, sanierungsstauMaxEur } = summiereSanierungsstau(risiko.hypothesen);
+    const { sanierungsstauMinEur, sanierungsstauMaxEur } = summiereSanierungsstau(hypothesen);
     const instandhaltungsruecklageEur = instandhaltungsruecklage(objektdaten.wohnflaecheQm);
     // Kaufnebenkosten werden gerechnet, nicht geschaetzt (siehe finance.ts).
     const kaufnebenkosten = berechneKaufnebenkosten({
@@ -761,7 +778,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
         () => syntheseAgent({ objektdaten, marktwert, risiko, finanz }),
         AGENT_RETRY_OPTIONS,
       );
-      const { ampel, wurdeKorrigiert } = erzwingeAmpelKonsistenz(syntheseResult.ampel, risiko.hypothesen);
+      const { ampel, wurdeKorrigiert } = erzwingeAmpelKonsistenz(syntheseResult.ampel, hypothesen);
       if (wurdeKorrigiert) {
         console.warn(
           `[HauskaufChecker] Ampel deterministisch auf ROT korrigiert bei Analyse ${analysisId} ` +
@@ -775,7 +792,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
 
     if (!checkpoint.pruefung) {
       checkpoint.pruefung = await withRetry(
-        () => sanierungsfahrplanPruefungAgent(objektdaten, risiko.hypothesen, synthese.sanierungsfahrplan),
+        () => sanierungsfahrplanPruefungAgent(objektdaten, hypothesen, synthese.sanierungsfahrplan),
         AGENT_RETRY_OPTIONS,
       );
       await speichereCheckpointSchritt(analysisId, "pruefung", checkpoint.pruefung);
@@ -823,7 +840,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       risikoSzenarien: finanz.risikoSzenarien,
       argumenteContra: synthese.argumenteContra,
       argumentePro: synthese.argumentePro,
-      hypothesen: risiko.hypothesen,
+      hypothesen,
       sanierungsstauMinEur,
       sanierungsstauMaxEur,
       sanierungsfahrplan: pruefung.sanierungsfahrplan,

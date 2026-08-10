@@ -232,6 +232,12 @@ function HypotheseCard({ h }: { h: Hypothese }) {
         </span>
       </div>
       <div className="hyp-cost">{h.kostenrahmenText}</div>
+      {h.risikoBegruendung && h.risikoBegruendung.length > 0 && (
+        <p className="hyp-begruendung">
+          <span className="hyp-begruendung-label">Einstufung:</span>{" "}
+          {h.risikoBegruendung.join(" · ")}
+        </p>
+      )}
       <p className="hyp-text">{h.hypothese}</p>
       <ul className="hyp-questions">
         {h.pruefragen.map((frage, i) => (
