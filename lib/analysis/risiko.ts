@@ -23,10 +23,17 @@
 
 import type { HypotheseFakten, Hypothese } from "./schema";
 
+// Schwellen und Gewichte sind an 62 Hypothesen aus fünf Läufen kalibriert.
+// Erste Fassung (5/2, alle Faktoren gleich stark) stufte 61 % aller
+// Hypothesen als HOCH ein und keine einzige als NIEDRIG – die Antworten des
+// Modells fallen deutlich großzügiger aus als bei der Konstruktion
+// angenommen: "Folgeschaden möglich" kommt bei 55 % vor, "im Exposé belegt"
+// bei 79 %. Gewichtet wird deshalb nach Trennschärfe: selten und eindeutig
+// beantwortete Fragen zählen stark, häufig bejahte schwach.
 /** Ab dieser Punktzahl gilt eine Hypothese als hohes Risiko. */
-export const SCHWELLE_HOCH = 5;
+export const SCHWELLE_HOCH = 6;
 /** Ab dieser Punktzahl gilt eine Hypothese als mittleres Risiko. */
-export const SCHWELLE_MITTEL = 2;
+export const SCHWELLE_MITTEL = 3;
 
 export interface RisikoBewertung {
   risiko: Hypothese["risiko"];
@@ -85,17 +92,21 @@ export function bewerteRisiko(
     begruendung.push("Kostenspanne mindestens dreifach – Aufwand stark von Ungeklärtem abhängig (+1)");
   }
 
+  // Trennscharf: nur bei 23 % bzw. 8 % der Hypothesen bejaht, und beides
+  // beschreibt eine vor dem Kauf nicht auflösbare Unsicherheit.
   if (fakten.rechtlichUngeklaert) {
-    punkte += 2;
-    begruendung.push("Genehmigung/Baurecht ungeklärt (+2)");
+    punkte += 3;
+    begruendung.push("Genehmigung/Baurecht ungeklärt (+3)");
   }
   if (fakten.ursacheGeklaert === false) {
-    punkte += 2;
-    begruendung.push("Schadensursache nicht dokumentiert (+2)");
+    punkte += 3;
+    begruendung.push("Schadensursache nicht dokumentiert (+3)");
   }
+  // Bewusst schwach gewichtet: Bei 55 % aller Hypothesen bejaht – theoretisch
+  // ist fast überall ein Folgeschaden denkbar, das trennt kaum.
   if (fakten.folgeschadenMoeglich) {
-    punkte += 2;
-    begruendung.push("Folgeschaden an der Substanz möglich (+2)");
+    punkte += 1;
+    begruendung.push("Folgeschaden an der Substanz möglich (+1)");
   }
   if (!fakten.vorOrtKlaerbar) {
     punkte += 1;
@@ -105,9 +116,11 @@ export function bewerteRisiko(
     punkte += 1;
     begruendung.push("Gesetzlicher Handlungsdruck (GEG/EU-EPBD) (+1)");
   }
+  // belegtImExpose fließt bewusst NICHT in die Punkte ein: Es wird bei 79 %
+  // der Hypothesen bejaht und trennt damit praktisch nicht. Der Hinweis
+  // bleibt in der Begründung, weil er für den Leser dennoch relevant ist.
   if (fakten.belegtImExpose) {
-    punkte += 1;
-    begruendung.push("Im Exposé konkret dokumentiert, nicht nur aus dem Baujahr abgeleitet (+1)");
+    begruendung.push("Im Exposé konkret dokumentiert, nicht nur aus dem Baujahr abgeleitet");
   }
 
   const risiko: Hypothese["risiko"] =
