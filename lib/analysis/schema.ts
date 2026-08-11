@@ -82,6 +82,7 @@ export const gewerkStatusEnum = z.enum([
   /** Aus den Unterlagen nicht beurteilbar – wird als Lücke ausgewiesen. */
   "NICHT_BEURTEILBAR",
 ]);
+export type GewerkStatus = z.infer<typeof gewerkStatusEnum>;
 
 // Was der Agent liefert: ausschließlich die Zustandsbeurteilung. Beträge
 // vergibt er bewusst nicht mehr – sie kamen bei identischer Eingabe jedes Mal
@@ -92,13 +93,32 @@ export const gewerkBefundAgentSchema = z.object({
   gewerk: gewerkEnum,
   status: gewerkStatusEnum,
   begruendung: z.string(),
+  // Nachprüfbare Fakten zum Erneuerungsstand. Wo eine belegte Nutzungsdauer
+  // vorliegt (lib/analysis/nutzungsdauer.ts), wird der Status daraus
+  // gerechnet und die Einschätzung oben überschrieben – der Status schwankte
+  // zwischen Läufen und war nach der Kostentabelle die verbliebene
+  // Hauptquelle der Streuung im Sanierungsstau.
+  /** Steht im Exposé, dass dieses Gewerk erneuert/modernisiert wurde? */
+  erneuertLautExpose: z.boolean(),
+  /** Genanntes Jahr der Erneuerung, sonst null. */
+  erneuerungsJahr: z.number().int().nullable(),
+  /** Wörtlicher Beleg aus dem Exposé. Ohne ihn zählt erneuertLautExpose nicht. */
+  zitatAusExpose: z.string().nullable(),
 });
 export type GewerkBefundAgent = z.infer<typeof gewerkBefundAgentSchema>;
 
 // Was im Report landet: die Beurteilung plus der daraus gerechnete
 // Kostenrahmen samt Herleitung. Die Kennwert-Felder sind optional, damit vor
 // der Umstellung gespeicherte Reports weiterhin geparst werden können.
-export const gewerkBefundSchema = gewerkBefundAgentSchema.extend({
+export const gewerkBefundSchema = gewerkBefundAgentSchema
+  // Optional, damit vor der Umstellung gespeicherte Reports weiterhin
+  // geparst werden können.
+  .partial({
+    erneuertLautExpose: true,
+    erneuerungsJahr: true,
+    zitatAusExpose: true,
+  })
+  .extend({
   // Nur bei HANDLUNGSBEDARF gesetzt, sonst null.
   kostenMinEur: z.number().nullable(),
   kostenMaxEur: z.number().nullable(),

@@ -47,6 +47,7 @@ import {
 import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
 import { bewerteHypothesen } from "./risiko";
 import { berechneSanierungsstau } from "./sanierungskosten";
+import { leiteStatusAb } from "./nutzungsdauer";
 
 const DISCLAIMER_HINWEIS =
   "Alle Angaben sind unverbindliche, KI-gestützte Hypothesen auf Basis der bereitgestellten Unterlagen. " +
@@ -324,9 +325,16 @@ async function risikoAgent(
       "- NICHT_BEURTEILBAR: Die Unterlagen geben dazu nichts her.\n" +
       "Begründe jeden Eintrag in einem Satz. Nutze NICHT_BEURTEILBAR nur, wenn wirklich nichts ableitbar ist – " +
       "aus Baujahr und Energiekennwerten lässt sich für die meisten Gewerke ein Status begründen.\n" +
+      "Beantworte je Gewerk ZUSÄTZLICH diese drei Fragen – sie werden nachgelagert ausgewertet:\n" +
+      "- erneuertLautExpose: true NUR, wenn das Exposé ausdrücklich sagt, dass dieses Gewerk erneuert, " +
+      "modernisiert oder ausgetauscht wurde. Aus dem Baujahr abgeleitete Annahmen sind KEINE Erneuerung.\n" +
+      "- erneuerungsJahr: Das genannte Jahr der Erneuerung als Zahl. Steht nur ein Zeitraum ('in den 2010er " +
+      "Jahren'), nimm das späteste plausible Jahr. Kein Jahr genannt: null.\n" +
+      "- zitatAusExpose: Die belegende Textstelle wörtlich (ein Satz genügt). Kannst du nichts zitieren, setze " +
+      "erneuertLautExpose=false und zitatAusExpose=null.\n" +
       "WICHTIG: Nenne in der Checkliste KEINE Beträge. Der Kostenrahmen je Gewerk wird nachgelagert aus einer " +
-      "hinterlegten Referenztabelle (Kostenkennwert mal Bezugsmenge) berechnet. Deine Aufgabe ist allein die " +
-      "Zustandsbeurteilung – sie entscheidet, ob ein Gewerk überhaupt in den Sanierungsstau eingeht.\n\n" +
+      "hinterlegten Referenztabelle (Kostenkennwert mal Bezugsmenge) berechnet. Deine Aufgabe ist die " +
+      "Zustandsbeurteilung und die Beleglage – sie entscheiden, ob ein Gewerk in den Sanierungsstau eingeht.\n\n" +
       "WICHTIG: objektdaten.besonderheitenAusExpose enthält Notizen aus dem Fließtext des Exposés (Schäden, " +
       "Rückbauten, unfertige Räume, Widersprüche zu Tabellenfeldern). Für JEDE Notiz darin MUSST du eine eigene " +
       "Hypothese mit konkreten Prüffragen " +
@@ -754,14 +762,40 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     // nicht vom Modell vergeben (siehe risiko.ts).
     const hypothesen = bewerteHypothesen(risiko.hypothesen, objektdaten.angebotspreisEur);
 
+    // Zweite Stufe der Vereinheitlichung: Wo eine belegte Nutzungsdauer
+    // vorliegt, wird auch der Status gerechnet statt beurteilt (siehe
+    // nutzungsdauer.ts). Für die übrigen Gewerke fehlt bislang eine Quelle –
+    // dort bleibt es bei der Einschätzung des Modells.
+    const bewertungsjahr = new Date().getFullYear();
+    const gewerkeMitStatus = risiko.gewerke.map((g) => {
+      const hergeleitet = leiteStatusAb(
+        g.gewerk,
+        {
+          erneuertLautExpose: g.erneuertLautExpose,
+          erneuerungsJahr: g.erneuerungsJahr,
+          zitatAusExpose: g.zitatAusExpose,
+        },
+        objektdaten.baujahr,
+        bewertungsjahr,
+      );
+      if (!hergeleitet) return g;
+      if (hergeleitet.status !== g.status) {
+        console.info(
+          `[HauskaufChecker] Analyse ${analysisId}: Gewerk ${g.gewerk} von ${g.status} auf ` +
+            `${hergeleitet.status} korrigiert – ${hergeleitet.herleitung}`,
+        );
+      }
+      return { ...g, status: hergeleitet.status, begruendung: hergeleitet.herleitung };
+    });
+
     // Der Sanierungsstau kommt aus der Referenztabelle: Das Modell beurteilt
     // nur den Zustand je Gewerk, die Beträge ergeben sich aus Kostenkennwert
     // mal Bezugsmenge (siehe sanierungskosten.ts). Bei gleichem Zustandsbild
     // ist die Summe damit reproduzierbar.
-    const stau = berechneSanierungsstau(risiko.gewerke, objektdaten);
+    const stau = berechneSanierungsstau(gewerkeMitStatus, objektdaten);
     const { sanierungsstauMinEur, sanierungsstauMaxEur, nichtBeurteilbar } = stau;
     // Die Checkliste für den Report um die gerechneten Beträge ergänzen.
-    const gewerkeMitKosten = risiko.gewerke.map((g) => {
+    const gewerkeMitKosten = gewerkeMitStatus.map((g) => {
       const berechnet = stau.posten.find((p) => p.gewerk === g.gewerk);
       if (!berechnet) return { ...g, kostenMinEur: null, kostenMaxEur: null };
       return { ...g, ...berechnet };
