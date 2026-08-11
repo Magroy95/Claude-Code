@@ -22,6 +22,12 @@ export const objektdatenSchema = z.object({
   wohnflaecheQm: z.number().nullable(),
   grundstueckQm: z.number().nullable(),
   zimmer: z.number().nullable(),
+  // Beide werden für die Mengenermittlung des Sanierungsstaus gebraucht
+  // (lib/analysis/sanierungskosten.ts): Aus der Geschosszahl folgen Grund-,
+  // Dach- und Fassadenfläche, aus der Bäderzahl der Sanitäranteil. Fehlen
+  // sie, greift eine benannte Standardannahme.
+  geschosse: z.number().nullable(),
+  anzahlBadezimmer: z.number().nullable(),
   energieklasse: z.string().nullable(),
   energiebedarfKwhM2a: z.number().nullable(),
   // null, wenn im Exposé nicht erkennbar, ob Bedarfs- oder Verbrauchsausweis.
@@ -77,13 +83,37 @@ export const gewerkStatusEnum = z.enum([
   "NICHT_BEURTEILBAR",
 ]);
 
-export const gewerkBefundSchema = z.object({
+// Was der Agent liefert: ausschließlich die Zustandsbeurteilung. Beträge
+// vergibt er bewusst nicht mehr – sie kamen bei identischer Eingabe jedes Mal
+// etwas anders heraus und waren die verbliebene Hauptquelle der Streuung im
+// Sanierungsstau. Sie stammen jetzt aus der Referenztabelle
+// (lib/analysis/sanierungskosten.ts).
+export const gewerkBefundAgentSchema = z.object({
   gewerk: gewerkEnum,
   status: gewerkStatusEnum,
+  begruendung: z.string(),
+});
+export type GewerkBefundAgent = z.infer<typeof gewerkBefundAgentSchema>;
+
+// Was im Report landet: die Beurteilung plus der daraus gerechnete
+// Kostenrahmen samt Herleitung. Die Kennwert-Felder sind optional, damit vor
+// der Umstellung gespeicherte Reports weiterhin geparst werden können.
+export const gewerkBefundSchema = gewerkBefundAgentSchema.extend({
   // Nur bei HANDLUNGSBEDARF gesetzt, sonst null.
   kostenMinEur: z.number().nullable(),
   kostenMaxEur: z.number().nullable(),
-  begruendung: z.string(),
+  /** Menge, auf die gerechnet wurde – z.B. 91 (m² Dachfläche). */
+  bezugsmenge: z.number().optional(),
+  bezugsEinheit: z.string().optional(),
+  /** Nachvollziehbare Herleitung der Menge aus den Objektdaten. */
+  mengenHerleitung: z.string().optional(),
+  eurProEinheitMin: z.number().optional(),
+  eurProEinheitMax: z.number().optional(),
+  /** Was im Kennwert enthalten ist. */
+  leistungsumfang: z.string().optional(),
+  quellen: z.array(z.string()).optional(),
+  /** Gesetzt, wenn der Ansatz den Posten absehbar nicht vollständig abdeckt. */
+  unvollstaendigerAnsatz: z.string().nullable().optional(),
 });
 export type GewerkBefund = z.infer<typeof gewerkBefundSchema>;
 
@@ -275,8 +305,9 @@ export const risikoAgentSchema = z.object({
   // damit gleiche Fakten zwingend zur gleichen Einstufung führen.
   hypothesen: z.array(hypotheseFaktenSchema).min(1),
   // Feste Checkliste, immer vollständig – der Sanierungsstau wird daraus
-  // summiert statt aus den Hypothesen.
-  gewerke: z.array(gewerkBefundSchema).length(8),
+  // gerechnet statt aus den Hypothesen summiert. Ohne Beträge: die liefert
+  // die Referenztabelle.
+  gewerke: z.array(gewerkBefundAgentSchema).length(8),
 });
 export type RisikoAgentResult = z.infer<typeof risikoAgentSchema>;
 

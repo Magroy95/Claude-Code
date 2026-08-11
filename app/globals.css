@@ -411,6 +411,36 @@ body {
 .gewerk-status.status-erneuert { background: var(--moss-tint); color: var(--moss); }
 .gewerk-status.status-nicht_beurteilbar { background: var(--paper-sunken); color: var(--ink-faint); }
 
+/* Die Rechnung hinter dem Betrag (Menge x Kennwert) und die Herleitung der
+   Menge. Bewusst klein und in der Monospace-Schrift: Sie sollen belegen,
+   nicht mit der eigentlichen Aussage der Zeile konkurrieren. */
+.gewerk-rechnung {
+  display: block; margin-top: 3px;
+  font-family: var(--rpt-mono); font-size: 10px; line-height: 1.5;
+  color: var(--ink-faint); white-space: normal;
+}
+.gewerk-herleitung {
+  display: block; margin-top: 6px;
+  font-size: 11px; line-height: 1.55; color: var(--ink-faint);
+}
+
+/* --- Quellenangaben unter der Gewerke-Tabelle --- */
+.rpt-quellen {
+  margin-top: 16px; padding: 12px 14px;
+  background: var(--paper-sunken); border-radius: var(--radius-s);
+}
+.rpt-quellen > b {
+  display: block; margin-bottom: 6px;
+  font-family: var(--rpt-mono); font-size: 10.5px; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.rpt-quellen ul { margin: 0 0 8px; padding-left: 16px; }
+.rpt-quellen li {
+  font-size: 11px; line-height: 1.6; color: var(--ink-soft);
+  overflow-wrap: break-word;
+}
+.rpt-quellen > p { margin: 0; font-size: 11px; line-height: 1.6; color: var(--ink-faint); }
+
 /* --- Beleg-Zitat aus dem Exposé --- */
 .hyp-zitat {
   margin: 0 0 10px; padding: 8px 12px;

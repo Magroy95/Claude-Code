@@ -21,7 +21,7 @@
 // von einem einzigen Objekt und sollten nachjustiert werden, sobald Daten
 // von mehreren Objekten vorliegen.
 
-import type { HypotheseFakten, Hypothese, GewerkBefund, Gewerk } from "./schema";
+import type { HypotheseFakten, Hypothese } from "./schema";
 
 // Schwellen und Gewichte sind an 62 Hypothesen aus fünf Läufen kalibriert.
 // Erste Fassung (5/2, alle Faktoren gleich stark) stufte 61 % aller
@@ -182,19 +182,6 @@ export function bewerteHypothesen(
   });
 }
 
-// --- Sanierungsstau aus der Gewerke-Checkliste ------------------------------
-// Summiert ausschließlich Gewerke mit Handlungsbedarf. Da die Checkliste
-// immer alle acht Positionen enthält, kann kein Gewerk mehr fehlen – genau
-// das war zuvor die Hauptursache der Streuung.
-export function summiereGewerke(gewerke: GewerkBefund[]): {
-  sanierungsstauMinEur: number;
-  sanierungsstauMaxEur: number;
-  nichtBeurteilbar: Gewerk[];
-} {
-  const mitBedarf = gewerke.filter((g) => g.status === "HANDLUNGSBEDARF");
-  return {
-    sanierungsstauMinEur: mitBedarf.reduce((s, g) => s + (g.kostenMinEur ?? 0), 0),
-    sanierungsstauMaxEur: mitBedarf.reduce((s, g) => s + (g.kostenMaxEur ?? 0), 0),
-    nichtBeurteilbar: gewerke.filter((g) => g.status === "NICHT_BEURTEILBAR").map((g) => g.gewerk),
-  };
-}
+// Der Sanierungsstau wird nicht mehr hier summiert: Die Beträge stammen aus
+// der Referenztabelle in lib/analysis/sanierungskosten.ts, siehe
+// berechneSanierungsstau().

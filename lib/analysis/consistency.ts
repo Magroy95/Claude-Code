@@ -87,6 +87,10 @@ export function validateRisiko(result: RisikoAgentResult): void {
 // Die Checkliste ist nur dann ein Stabilitätsgewinn, wenn sie wirklich
 // vollständig ist – fehlt ein Gewerk, fehlt sein Kostenanteil im
 // Sanierungsstau, und genau das sollte die Liste ja verhindern.
+//
+// Kostenspannen werden hier nicht mehr geprüft: Sie kommen nicht mehr vom
+// Modell, sondern aus der Referenztabelle, die sie per Konstruktion konsistent
+// hält (Menge x Kennwert, Minimum stets aus dem unteren Kennwert).
 export function validateGewerke(gewerke: RisikoAgentResult["gewerke"]): void {
   const gesehen = new Set(gewerke.map((g) => g.gewerk));
   const fehlend = ALLE_GEWERKE.filter((g) => !gesehen.has(g));
@@ -97,14 +101,8 @@ export function validateGewerke(gewerke: RisikoAgentResult["gewerke"]): void {
     throw new ConsistencyError("Gewerke-Checkliste enthält ein Gewerk mehrfach.");
   }
   for (const g of gewerke) {
-    if (g.status === "HANDLUNGSBEDARF") {
-      if (g.kostenMinEur === null || g.kostenMaxEur === null) {
-        throw new ConsistencyError(
-          `Gewerk ${g.gewerk} ist als HANDLUNGSBEDARF markiert, hat aber keine Kostenspanne.`,
-        );
-      }
-      assertRange(`Gewerk ${g.gewerk} Kostenspanne`, g.kostenMinEur, g.kostenMaxEur);
-      assertNonNegative(`Gewerk ${g.gewerk} Kosten-Minimum`, g.kostenMinEur);
+    if (g.begruendung.trim().length === 0) {
+      throw new ConsistencyError(`Gewerk ${g.gewerk} hat keine Begründung.`);
     }
   }
 }

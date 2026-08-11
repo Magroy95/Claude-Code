@@ -45,7 +45,8 @@ import {
   erzwingeAmpelKonsistenz,
 } from "./consistency";
 import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
-import { bewerteHypothesen, summiereGewerke } from "./risiko";
+import { bewerteHypothesen } from "./risiko";
+import { berechneSanierungsstau } from "./sanierungskosten";
 
 const DISCLAIMER_HINWEIS =
   "Alle Angaben sind unverbindliche, KI-gestützte Hypothesen auf Basis der bereitgestellten Unterlagen. " +
@@ -140,6 +141,12 @@ async function extraktionAgent(
       "Unterscheidung (ein Verbrauchsausweis basiert auf dem tatsächlichen Heizverhalten der Vorbewohner, nicht auf " +
       "dem berechneten Gebäudebedarf, und ist deshalb weniger belastbar), also nicht einfach 'BEDARF' annehmen, wenn " +
       "es nicht explizit dasteht.\n\n" +
+      "Erfasse außerdem zwei Mengenangaben, die für die Kostenschätzung gebraucht werden:\n" +
+      "- geschosse: Anzahl der Wohngeschosse einschließlich ausgebautem Dach- oder Untergeschoss (ein " +
+      "Bungalow hat 1, 'Einfamilienhaus mit ausgebautem Dachgeschoss' hat 2, ein dreigeschossiges Haus 3). " +
+      "Steht es weder als Angabe noch aus der Beschreibung erkennbar im Exposé, setze null.\n" +
+      "- anzahlBadezimmer: Anzahl der Badezimmer laut Exposé, inkl. Duschbad und Gäste-WC mit Dusche. Ein " +
+      "reines Gäste-WC ohne Dusche zählt nicht mit. Nicht angegeben: null.\n\n" +
       "Leite aus Ort und Postleitzahl das Bundesland ab und gib es in bundesland exakt so an, wie es amtlich " +
       "heißt (z.B. 'Niedersachsen', 'Nordrhein-Westfalen', 'Bremen'). Es wird für die Grunderwerbsteuer " +
       "gebraucht, die je Bundesland unterschiedlich hoch ist. Nur wenn die Lage keine eindeutige Zuordnung " +
@@ -312,12 +319,14 @@ async function risikoAgent(
       "Hohlraum vorhanden?) prüfen bzw. beim Verkäufer/Bauakte erfragen' als Prüffrage auf.\n\n" +
       "Erstelle ZUSÄTZLICH die Gewerke-Checkliste: genau acht Einträge, für jedes Gewerk exakt einen – DACH, " +
       "FASSADE, FENSTER, HEIZUNG, ELEKTRO, SANITAER, INNENAUSBAU, SCHADSTOFFE. Je Gewerk genau ein Status:\n" +
-      "- ERNEUERT: Das Exposé sagt, dass dieses Gewerk erneuert/modernisiert wurde. kostenMinEur/MaxEur = null.\n" +
-      "- HANDLUNGSBEDARF: Aufwand ist absehbar. Setze eine realistische Kostenspanne in kostenMinEur/MaxEur.\n" +
-      "- NICHT_BEURTEILBAR: Die Unterlagen geben dazu nichts her. kostenMinEur/MaxEur = null.\n" +
+      "- ERNEUERT: Das Exposé sagt, dass dieses Gewerk erneuert/modernisiert wurde.\n" +
+      "- HANDLUNGSBEDARF: Aufwand ist absehbar.\n" +
+      "- NICHT_BEURTEILBAR: Die Unterlagen geben dazu nichts her.\n" +
       "Begründe jeden Eintrag in einem Satz. Nutze NICHT_BEURTEILBAR nur, wenn wirklich nichts ableitbar ist – " +
-      "aus Baujahr und Energiekennwerten lässt sich für die meisten Gewerke ein Rahmen begründen. Diese Liste " +
-      "wird zum Sanierungsstau aufsummiert, die Kostenspannen müssen also belastbar sein.\n\n" +
+      "aus Baujahr und Energiekennwerten lässt sich für die meisten Gewerke ein Status begründen.\n" +
+      "WICHTIG: Nenne in der Checkliste KEINE Beträge. Der Kostenrahmen je Gewerk wird nachgelagert aus einer " +
+      "hinterlegten Referenztabelle (Kostenkennwert mal Bezugsmenge) berechnet. Deine Aufgabe ist allein die " +
+      "Zustandsbeurteilung – sie entscheidet, ob ein Gewerk überhaupt in den Sanierungsstau eingeht.\n\n" +
       "WICHTIG: objektdaten.besonderheitenAusExpose enthält Notizen aus dem Fließtext des Exposés (Schäden, " +
       "Rückbauten, unfertige Räume, Widersprüche zu Tabellenfeldern). Für JEDE Notiz darin MUSST du eine eigene " +
       "Hypothese mit konkreten Prüffragen " +
@@ -745,9 +754,18 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     // nicht vom Modell vergeben (siehe risiko.ts).
     const hypothesen = bewerteHypothesen(risiko.hypothesen, objektdaten.angebotspreisEur);
 
-    const { sanierungsstauMinEur, sanierungsstauMaxEur, nichtBeurteilbar } = summiereGewerke(
-      risiko.gewerke,
-    );
+    // Der Sanierungsstau kommt aus der Referenztabelle: Das Modell beurteilt
+    // nur den Zustand je Gewerk, die Beträge ergeben sich aus Kostenkennwert
+    // mal Bezugsmenge (siehe sanierungskosten.ts). Bei gleichem Zustandsbild
+    // ist die Summe damit reproduzierbar.
+    const stau = berechneSanierungsstau(risiko.gewerke, objektdaten);
+    const { sanierungsstauMinEur, sanierungsstauMaxEur, nichtBeurteilbar } = stau;
+    // Die Checkliste für den Report um die gerechneten Beträge ergänzen.
+    const gewerkeMitKosten = risiko.gewerke.map((g) => {
+      const berechnet = stau.posten.find((p) => p.gewerk === g.gewerk);
+      if (!berechnet) return { ...g, kostenMinEur: null, kostenMaxEur: null };
+      return { ...g, ...berechnet };
+    });
     if (nichtBeurteilbar.length > 0) {
       console.warn(
         `[HauskaufChecker] Analyse ${analysisId}: ${nichtBeurteilbar.length} Gewerk(e) nicht beurteilbar:`,
@@ -855,7 +873,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
       argumenteContra: synthese.argumenteContra,
       argumentePro: synthese.argumentePro,
       hypothesen,
-      gewerke: risiko.gewerke,
+      gewerke: gewerkeMitKosten,
       sanierungsstauMinEur,
       sanierungsstauMaxEur,
       sanierungsfahrplan: pruefung.sanierungsfahrplan,

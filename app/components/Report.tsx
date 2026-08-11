@@ -290,6 +290,11 @@ export function Report({
   const annahmen = report.finanzAnnahmen;
   const kaufnebenkosten = report.kaufnebenkostenAufstellung;
   const gewerke = report.gewerke;
+  // Quellen einmal gesammelt und entdoppelt unter der Tabelle ausweisen statt
+  // je Zeile – mehrere Gewerke teilen sich dieselbe Quelle.
+  const gewerkeQuellen = [
+    ...new Set((gewerke ?? []).flatMap((g) => (g.status === "HANDLUNGSBEDARF" ? (g.quellen ?? []) : []))),
+  ].sort();
   const hypothesenByKategorie = (
     ["KAUFENTSCHEIDEND", "KOSTENRELEVANT", "STRATEGISCH"] as const
   ).map((kategorie) => ({
@@ -579,6 +584,12 @@ export function Report({
             hergeben. So ist erkennbar, was tatsächlich geprüft werden konnte und wo eine Lücke
             bleibt. Der geschätzte Sanierungsstau ist die Summe der Positionen mit Handlungsbedarf.
           </p>
+          <p className="rpt-text" style={{ marginBottom: "14px" }}>
+            Die Kostenrahmen sind nicht frei geschätzt, sondern gerechnet: Kostenkennwert mal
+            Bezugsmenge. Der Kennwert stammt aus einer hinterlegten Referenztabelle, die Menge
+            aus den Angaben des Exposés. Beides steht unter jedem Posten, damit Sie die Rechnung
+            nachvollziehen und mit einem Handwerkerangebot vergleichen können.
+          </p>
           <div className="rpt-table-wrap">
             <table className="rpt-table">
               <colgroup>
@@ -605,16 +616,55 @@ export function Report({
                       </span>
                     </td>
                     <td>
-                      {g.status === "HANDLUNGSBEDARF" && g.kostenMinEur !== null && g.kostenMaxEur !== null
-                        ? `${formatEur(g.kostenMinEur)}–${formatEur(g.kostenMaxEur)}`
-                        : "–"}
+                      {g.status === "HANDLUNGSBEDARF" && g.kostenMinEur !== null && g.kostenMaxEur !== null ? (
+                        <>
+                          {`${formatEur(g.kostenMinEur)}–${formatEur(g.kostenMaxEur)}`}
+                          {g.bezugsmenge !== undefined && g.eurProEinheitMin !== undefined && (
+                            <span className="gewerk-rechnung">
+                              {g.bezugsmenge.toLocaleString("de-DE")} {g.bezugsEinheit} ×{" "}
+                              {formatEur(g.eurProEinheitMin)}–{formatEur(g.eurProEinheitMax ?? 0)}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        "–"
+                      )}
                     </td>
-                    <td>{g.begruendung}</td>
+                    <td>
+                      {g.begruendung}
+                      {g.status === "HANDLUNGSBEDARF" && g.mengenHerleitung && (
+                        <span className="gewerk-herleitung">
+                          {g.leistungsumfang && <>{g.leistungsumfang}. </>}
+                          Menge: {g.mengenHerleitung}.
+                        </span>
+                      )}
+                      {g.unvollstaendigerAnsatz && (
+                        <span className="gewerk-herleitung">
+                          <strong>Nicht in der Summe enthalten:</strong> {g.unvollstaendigerAnsatz}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          {gewerkeQuellen.length > 0 && (
+            <div className="rpt-quellen">
+              <b>Quellen der Kostenkennwerte</b>
+              <ul>
+                {gewerkeQuellen.map((q) => (
+                  <li key={q}>{q}</li>
+                ))}
+              </ul>
+              <p>
+                Öffentlich zugängliche Fachportale, je Position gegeneinander abgeglichen. Die
+                Spannen sind bewusst breit und ersetzen kein Angebot. Regionale Preisunterschiede —
+                die Stundensätze im Bauhauptgewerbe unterscheiden sich zwischen Süd- und
+                Ostdeutschland um rund ein Drittel — sind darin nicht abgebildet.
+              </p>
+            </div>
+          )}
         </Section>
       )}
 
