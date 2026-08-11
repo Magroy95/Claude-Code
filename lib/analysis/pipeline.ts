@@ -328,8 +328,11 @@ async function risikoAgent(
       "Beantworte je Gewerk ZUSÄTZLICH diese drei Fragen – sie werden nachgelagert ausgewertet:\n" +
       "- erneuertLautExpose: true NUR, wenn das Exposé ausdrücklich sagt, dass dieses Gewerk erneuert, " +
       "modernisiert oder ausgetauscht wurde. Aus dem Baujahr abgeleitete Annahmen sind KEINE Erneuerung.\n" +
-      "- erneuerungsJahr: Das genannte Jahr der Erneuerung als Zahl. Steht nur ein Zeitraum ('in den 2010er " +
-      "Jahren'), nimm das späteste plausible Jahr. Kein Jahr genannt: null.\n" +
+      "- erneuerungsJahr: Das genannte Jahr der Erneuerung als Zahl. Diese Angabe ist entscheidend – ohne sie " +
+      "lässt sich das Alter des Bauteils nicht bestimmen. Suche deshalb im gesamten Exposé danach, auch im " +
+      "Fließtext ('Heizung 2015 erneuert', 'neue Fenster seit 2018', 'Bad vor drei Jahren modernisiert'). " +
+      "Steht nur ein Zeitraum ('in den 2010er Jahren'), nimm das späteste plausible Jahr; steht eine relative " +
+      "Angabe ('vor drei Jahren'), rechne sie in ein Jahr um. Findest du wirklich kein Jahr: null.\n" +
       "- zitatAusExpose: Die belegende Textstelle wörtlich (ein Satz genügt). Kannst du nichts zitieren, setze " +
       "erneuertLautExpose=false und zitatAusExpose=null.\n" +
       "WICHTIG: Nenne in der Checkliste KEINE Beträge. Der Kostenrahmen je Gewerk wird nachgelagert aus einer " +

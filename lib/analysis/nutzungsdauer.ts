@@ -203,6 +203,23 @@ export function leiteStatusAb(
   if (!dauer) return null;
 
   const belegt = istErneuerungBelegt(fakten);
+
+  // Belegte Erneuerung, aber ohne Jahresangabe: Dann ist das Alter nicht
+  // bestimmbar, und ein Rückfall auf das Baujahr wäre schlicht falsch – er
+  // würde ein nachweislich erneuertes Bauteil so behandeln, als sei nie
+  // etwas passiert, und dafür den vollen Kostenansatz buchen. Ehrlicher ist
+  // die Lücke: Wir wissen, dass erneuert wurde, nur nicht wann.
+  if (belegt && fakten.erneuerungsJahr === null) {
+    return {
+      status: "NICHT_BEURTEILBAR",
+      alterJahre: null,
+      herleitung:
+        "Das Exposé weist eine Erneuerung aus, nennt aber kein Jahr – ohne Zeitpunkt lässt sich der " +
+        "Erneuerungsbedarf nicht bestimmen. Beim Besichtigungstermin nach dem Jahr der Maßnahme fragen. " +
+        `Beleg: „${(fakten.zitatAusExpose ?? "").trim()}“`,
+    };
+  }
+
   // Maßgeblich ist das Erneuerungsjahr, sonst das Baujahr des Hauses.
   const bezugsjahr = belegt && fakten.erneuerungsJahr !== null ? fakten.erneuerungsJahr : baujahr;
 
