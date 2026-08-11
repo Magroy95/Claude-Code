@@ -16,25 +16,31 @@
 // sich daraus.
 //
 // -------------------------------------------------------------------------
-// QUELLENLAGE – wichtig, bevor diese Tabelle erweitert wird:
+// QUELLE: BBSR-Nutzungsdauertabelle "Nutzungsdauern von Bauteilen für
+// Lebenszyklusanalysen nach BNB", Stand 04.11.2025, herausgegeben vom
+// Bundesinstitut für Bau-, Stadt- und Raumforschung. Sie ist die Grundlage
+// der Lebenszykluskosten- und Ökobilanzberechnung im Bewertungssystem
+// Nachhaltiges Bauen des Bundes und im Qualitätssiegel Nachhaltiges Gebäude.
+// Referenznummern in den Einträgen unten beziehen sich auf die
+// Kostengruppen nach DIN 276 in der Systematik dieser Tabelle.
 //
-// Vollständig belegbar war diese Tabelle bislang nicht. Die maßgeblichen
-// Primärquellen sind aus der Ausführungsumgebung nicht erreichbar (die
-// Netzwerk-Policy blockt den Abruf auf Proxy-Ebene, HTTP 403):
-//   - ImmoWertV 2021, Anlage 2, Tabelle 1 (Modernisierungselemente mit
-//     Punkten und Betrachtungszeiträumen) – gesetze-im-internet.de und
-//     sämtliche Spiegel
-//   - BBSR-Nutzungsdauertabelle "Nutzungsdauern von Bauteilen für
-//     Lebenszyklusanalysen nach BNB" (Stand 04.11.2025) –
-//     nachhaltigesbauen.de
-//   - BTE-Arbeitsblatt "Lebensdauer von Bauteilen, Zeitwerte"
+// ZWEI DINGE, DIE MAN BEIM LESEN DIESER TABELLE WISSEN MUSS:
 //
-// Aufgenommen sind daher NUR Gewerke, für die aus der Recherche ein konkreter
-// Zahlenwert mit Quelle vorlag. Für die übrigen steht hier bewusst kein
-// Eintrag: Ohne Beleg wird nichts angesetzt, und der Status bleibt dann bei
-// der Einschätzung des Modells (siehe leiteStatusAb, Rückgabe null). Lieber
-// ein Gewerk weiterhin unbestimmt als eine erfundene Nutzungsdauer, die im
-// Report wie eine Norm aussieht.
+// Erstens ist "≥ 50" keine gemessene Lebensdauer, sondern die Obergrenze des
+// Betrachtungszeitraums: Das BNB bewertet über 50 Jahre, alles was länger
+// hält, wird nicht weiter differenziert. Wo hier 50 als Obergrenze steht,
+// heißt das also "hält mindestens so lange", nicht "ist dann verbraucht".
+//
+// Zweitens – und das ist für den Sanierungsstau entscheidend – bestimmt
+// nicht die langlebigste Schicht eines Gewerks den Erneuerungszeitpunkt,
+// sondern die kurzlebigste. Ein Ziegeldach hält laut BBSR ≥ 50 Jahre, die
+// Unterdeckung darunter aber nur 35. Wer nach 35 Jahren die Unterdeckung
+// erneuert, deckt das Dach dabei ohnehin ab. Die Untergrenze je Gewerk ist
+// deshalb die maßgebliche Schicht, nicht der Mittelwert über alle.
+//
+// Die BBSR selbst weist darauf hin, dass die Werte Erfahrungswerte sind und
+// keine Messgrößen – verbindliche Aussagen lassen sich daraus nicht
+// ableiten. Der Report weist sie entsprechend als Orientierung aus.
 // -------------------------------------------------------------------------
 
 import type { Gewerk, GewerkStatus } from "./schema";
@@ -47,51 +53,104 @@ export interface NutzungsdauerAngabe {
   /** Was genau diese Nutzungsdauer beschreibt. */
   bezeichnung: string;
   quellen: string[];
+  /**
+   * Gehört das Gewerk zur thermischen Hülle? Dann löst schlechte
+   * Energieeffizienz Handlungsbedarf aus, auch wenn das Bauteil technisch
+   * noch intakt ist.
+   *
+   * Ohne diese Unterscheidung würde die Nutzungsdauer-Herleitung Schaden
+   * anrichten: Eine Fassade von 1994 ist nach 32 Jahren nicht verschlissen
+   * (BBSR: 45–50 Jahre) – bei Energieklasse E ist sie trotzdem ein
+   * Kostenpunkt, den ein Käufer einplanen muss. Verschleiß und
+   * energetischer Bedarf sind zwei verschiedene Gründe für dieselbe
+   * Maßnahme, und nur einer davon steht in der BBSR-Tabelle.
+   */
+  thermischeHuelle?: boolean;
 }
 
 /**
- * Nur belegte Einträge. Bewusst unvollständig – siehe Quellenlage oben.
- * Nicht enthalten und noch zu belegen: DACH (die recherchierten Werte
- * beziehen sich auf den Ziegel selbst, nicht auf das Dachsystem aus Lattung,
- * Unterdeckbahn und Eindeckung), FASSADE, INNENAUSBAU. SCHADSTOFFE hat
- * naturgemäß keine Nutzungsdauer – dort entscheidet die Baualtersklasse,
- * nicht der Verschleiß.
+ * Sieben der acht Gewerke sind belegt. SCHADSTOFFE fehlt bewusst und
+ * dauerhaft: Asbest verschleißt nicht, sondern ist verbaut oder nicht – dort
+ * entscheidet die Baualtersklasse, nicht das Alter. Der Status dieses
+ * Gewerks bleibt deshalb bei der Einschätzung des Modells.
  */
 export const NUTZUNGSDAUER: Partial<Record<Gewerk, NutzungsdauerAngabe>> = {
-  FENSTER: {
-    jahreMin: 40,
-    jahreMax: 60,
-    bezeichnung: "Fensterrahmen aus Holz, Aluminium oder Kunststoff",
+  DACH: {
+    // Maßgeblich ist nicht die Deckung, sondern was darunter liegt: Die
+    // Unterdeckung hält 35 Jahre, die Entwässerung aus verzinktem Stahl
+    // 35–40. Beides erzwingt das Abdecken des Dachs.
+    jahreMin: 35,
+    jahreMax: 50,
+    bezeichnung: "Dachsystem – maßgeblich Unterdeckung und Entwässerung, nicht die Deckung",
     quellen: [
-      "fertighaus.de/ratgeber – Lebensdauer von Bauteilen und Bauteilschichten (Fensterrahmen Holz/Aluminium/Kunststoff: 40–60 Jahre)",
+      "BBSR-Nutzungsdauertabelle 04.11.2025, KG 363 Dachbeläge: Unterdach/Unterdeckung dampfdiffusionsoffene bzw. -dichte Folien 35 Jahre; Entwässerung Stahl galvanisch verzinkt 35–40 Jahre; Deckungen Ziegel, Beton und Faserzement ≥ 50 Jahre",
     ],
+    thermischeHuelle: true,
+  },
+  FASSADE: {
+    jahreMin: 45,
+    jahreMax: 50,
+    bezeichnung: "Putz- bzw. Bekleidungsebene der Außenwand",
+    quellen: [
+      "BBSR-Nutzungsdauertabelle 04.11.2025, KG 335 Außenwandbekleidung außen: pastöse Putze 45 Jahre, Putz auf Wärmedämmung 45 Jahre, mineralische Putze ≥ 50 Jahre, Wärmedämm-Verbundsystem ≥ 50 Jahre, Bekleidungen aus Klinker und Kalksandstein ≥ 50 Jahre",
+    ],
+    thermischeHuelle: true,
+  },
+  FENSTER: {
+    // Der Rahmen hält ≥ 50 Jahre, der Randverbund der Verglasung nicht: Ein
+    // Fenster wird wegen der Scheibe getauscht, nicht wegen des Rahmens.
+    jahreMin: 30,
+    jahreMax: 50,
+    bezeichnung: "Fenster – maßgeblich die Verglasung, nicht der Rahmen",
+    quellen: [
+      "BBSR-Nutzungsdauertabelle 04.11.2025, KG 334 Außenwandöffnungen: Verglasung Sicherheits-Isolierglas und 3-Scheiben-Wärmeschutz-Isolierglas 30 Jahre, Dichtungsprofile 20 Jahre; Rahmen und Flügel aus PVC-U, Aluminium oder behandeltem Nadelholz ≥ 50 Jahre",
+    ],
+    thermischeHuelle: true,
   },
   HEIZUNG: {
-    jahreMin: 15,
+    jahreMin: 20,
     jahreMax: 25,
-    bezeichnung: "Wärmeerzeuger der Heizungsanlage",
+    bezeichnung: "Wärmeerzeuger",
     quellen: [
-      "Paritätische Lebensdauertabelle HEV/Mieterverband, wiedergegeben bei raiffeisen.ch und houzy.ch (Heizungsanlage: 15–25 Jahre)",
+      "BBSR-Nutzungsdauertabelle 04.11.2025, KG 421 Wärmeerzeugungsanlagen: Gas-Brennwertkessel 20 Jahre, Spezialkessel für Öl- und Gasfeuerung 20 Jahre, Wärmepumpe Luft/Wasser 20 Jahre, Holzpellet- und Hackschnitzelkessel 20 Jahre, Elektro-Zentralspeicher 25 Jahre",
+    ],
+  },
+  ELEKTRO: {
+    jahreMin: 25,
+    jahreMax: 40,
+    bezeichnung: "Elektroinstallation – maßgeblich Verteilung und Leitungen",
+    quellen: [
+      "BBSR-Nutzungsdauertabelle 04.11.2025, KG 440 Starkstromanlagen: Niederspannungsschaltanlagen (Verteilung) 25 Jahre, Kabel/Leitungen/Verlegesysteme 25 Jahre, Niederspannungsinstallationsanlagen 40 Jahre",
     ],
   },
   SANITAER: {
-    jahreMin: 25,
-    jahreMax: 50,
-    bezeichnung: "Sanitärinstallation einschließlich Leitungsnetz",
+    // Die Rohre halten ≥ 50 Jahre, Armaturen und Speicher 20. Ein Bad wird
+    // wegen der Ausstattung saniert, nicht wegen der Kaltwasserleitung.
+    jahreMin: 20,
+    jahreMax: 30,
+    bezeichnung: "Sanitärausstattung und Warmwasserbereitung, nicht das Leitungsnetz",
     quellen: [
-      "Paritätische Lebensdauertabelle HEV/Mieterverband, wiedergegeben bei raiffeisen.ch und houzy.ch (Sanitärinstallation: 25–50 Jahre; Leitungsnetz in der Regel nach 30–50 Jahren erneuert)",
+      "BBSR-Nutzungsdauertabelle 04.11.2025, KG 412 Wasseranlagen: Entnahmearmaturen 20 Jahre, Trinkwasserspeicher 20 Jahre, Speicher-Wassererwärmer 20 Jahre, Warmwasserleitungen bei ungünstigen Wasserverhältnissen 30 Jahre; Kaltwasserleitungen und Abwasseranlagen ≥ 50 Jahre",
+    ],
+  },
+  INNENAUSBAU: {
+    // Oberflächen, nicht Substanz: Estrich und Innenputz halten ≥ 50 Jahre,
+    // aber Anstriche, Tapeten und Bodenbeläge sind der Grund, aus dem ein
+    // Haus nach dem Kauf renoviert wird.
+    jahreMin: 20,
+    jahreMax: 25,
+    bezeichnung: "Oberflächen – Anstriche, Tapeten, Bodenbeläge",
+    quellen: [
+      "BBSR-Nutzungsdauertabelle 04.11.2025, KG 345 Innenwandbekleidungen und KG 353/354 Deckenbeläge und -bekleidungen: Innenanstriche Nassabriebklasse 1 20 Jahre, Tapeten überstreichbar 25 Jahre, Bodenbeläge Linoleum und PVC-homogen 25 Jahre, PVC-heterogen und Webware 20 Jahre; Estriche und mineralische Innenputze ≥ 50 Jahre",
     ],
   },
 };
 
-/** Gewerke, für die noch kein belegter Wert vorliegt – für Report und Tests. */
-export const NUTZUNGSDAUER_OFFEN: Gewerk[] = [
-  "DACH",
-  "FASSADE",
-  "ELEKTRO",
-  "INNENAUSBAU",
-  "SCHADSTOFFE",
-];
+/**
+ * Gewerke ohne Nutzungsdauer-Herleitung. SCHADSTOFFE steht hier dauerhaft:
+ * Der Befund hängt an der Baualtersklasse, nicht am Verschleiß.
+ */
+export const NUTZUNGSDAUER_OFFEN: Gewerk[] = ["SCHADSTOFFE"];
 
 /** Die im Exposé belegten Angaben zum Erneuerungsstand eines Gewerks. */
 export interface ErneuerungsFakten {
@@ -138,6 +197,7 @@ export function leiteStatusAb(
   fakten: ErneuerungsFakten,
   baujahr: number | null,
   bewertungsjahr: number,
+  energetischerBedarf = false,
 ): StatusHerleitung | null {
   const dauer = NUTZUNGSDAUER[gewerk];
   if (!dauer) return null;
@@ -181,6 +241,19 @@ export function leiteStatusAb(
       herleitung:
         `${quelle} → ${alter} Jahre alt und damit im Erneuerungsfenster ` +
         `(${dauer.bezeichnung}, ${dauer.jahreMin}–${dauer.jahreMax} Jahre). Die Ausgabe ist absehbar und einzuplanen.`,
+    };
+  }
+  // Technisch noch nicht fällig – aber bei schlechter Energieeffizienz ist
+  // ein Bauteil der thermischen Hülle trotzdem ein Kostenpunkt.
+  if (energetischerBedarf && dauer.thermischeHuelle) {
+    return {
+      status: "HANDLUNGSBEDARF",
+      alterJahre: alter,
+      herleitung:
+        `${quelle} → ${alter} Jahre alt und damit technisch noch nicht erneuerungsreif ` +
+        `(${dauer.bezeichnung}, ${dauer.jahreMin}–${dauer.jahreMax} Jahre). Das Bauteil gehört jedoch zur ` +
+        `thermischen Hülle, und die Energiekennwerte des Hauses weisen auf energetischen Nachholbedarf hin – ` +
+        `nicht Verschleiß ist hier der Grund, sondern der Wärmeschutz.`,
     };
   }
   return {

@@ -46,7 +46,7 @@ import {
 } from "./consistency";
 import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
 import { bewerteHypothesen } from "./risiko";
-import { berechneSanierungsstau } from "./sanierungskosten";
+import { berechneSanierungsstau, energetischerBedarf } from "./sanierungskosten";
 import { leiteStatusAb } from "./nutzungsdauer";
 
 const DISCLAIMER_HINWEIS =
@@ -777,6 +777,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
         },
         objektdaten.baujahr,
         bewertungsjahr,
+        energetischerBedarf(objektdaten),
       );
       if (!hergeleitet) return g;
       if (hergeleitet.status !== g.status) {
