@@ -132,6 +132,18 @@ export const gewerkBefundSchema = gewerkBefundAgentSchema
   /** Was im Kennwert enthalten ist. */
   leistungsumfang: z.string().optional(),
   quellen: z.array(z.string()).optional(),
+  /**
+   * Worauf die Einstufung beruht – ein aus dem Baujahr gerechneter Posten
+   * unterstellt, dass seit dem Bau nichts erneuert wurde, und das ist eine
+   * Annahme, keine Feststellung.
+   */
+  statusBasis: z.enum(["ERNEUERUNGSJAHR", "BAUJAHR", "UNDATIERTE_ERNEUERUNG", "UNBEKANNT"]).optional(),
+  /** Hinweis neben dem Betrag, wenn er auf einer Annahme beruht. */
+  annahmeHinweis: z.string().nullable().optional(),
+  /** Frage für die Besichtigung, die diese Annahme auflösen würde. */
+  klaerungsfrage: z.string().nullable().optional(),
+  /** Betrag ausgewiesen, aber nicht in der Summe enthalten. */
+  ausserhalbDerSumme: z.boolean().optional(),
   /** Gesetzt, wenn der Ansatz den Posten absehbar nicht vollständig abdeckt. */
   unvollstaendigerAnsatz: z.string().nullable().optional(),
 });

@@ -152,6 +152,18 @@ export const NUTZUNGSDAUER: Partial<Record<Gewerk, NutzungsdauerAngabe>> = {
  */
 export const NUTZUNGSDAUER_OFFEN: Gewerk[] = ["SCHADSTOFFE"];
 
+/** Gewerkname, wie er in einer Frage an den Verkäufer klingt. */
+const GEWERK_IM_SATZ: Record<Gewerk, string> = {
+  DACH: "das Dach",
+  FASSADE: "die Fassade",
+  FENSTER: "die Fenster",
+  HEIZUNG: "die Heizung",
+  ELEKTRO: "die Elektroinstallation",
+  SANITAER: "die Bäder bzw. die Sanitärinstallation",
+  INNENAUSBAU: "der Innenausbau (Böden, Wände, Türen)",
+  SCHADSTOFFE: "der Schadstoffbestand",
+};
+
 /** Die im Exposé belegten Angaben zum Erneuerungsstand eines Gewerks. */
 export interface ErneuerungsFakten {
   /** Steht im Exposé, dass dieses Gewerk erneuert wurde? */
@@ -162,12 +174,37 @@ export interface ErneuerungsFakten {
   zitatAusExpose: string | null;
 }
 
+/**
+ * Worauf die Einstufung beruht. Wird im Report ausgewiesen, weil der
+ * Unterschied für den Leser erheblich ist: Ein aus dem Baujahr gerechneter
+ * Posten unterstellt, dass seit dem Bau nichts erneuert wurde – das ist eine
+ * Annahme, keine Feststellung, und sie fällt in sich zusammen, sobald der
+ * Verkäufer ein Erneuerungsjahr nennt.
+ */
+export type StatusBasis =
+  /** Ein belegtes Erneuerungsjahr lag vor – die belastbarste Grundlage. */
+  | "ERNEUERUNGSJAHR"
+  /** Aus dem Baujahr gerechnet, weil keine Erneuerung dokumentiert ist. */
+  | "BAUJAHR"
+  /** Erneuerung belegt, aber ohne Jahr – Alter nicht bestimmbar. */
+  | "UNDATIERTE_ERNEUERUNG"
+  /** Weder Baujahr noch Erneuerungsjahr bekannt. */
+  | "UNBEKANNT";
+
 export interface StatusHerleitung {
   status: GewerkStatus;
   /** Zugrunde gelegtes Alter des Gewerks in Jahren, null wenn unbestimmbar. */
   alterJahre: number | null;
   /** Ein Satz, der die Einstufung im Report nachvollziehbar macht. */
   herleitung: string;
+  basis: StatusBasis;
+  /**
+   * Wenn die Einstufung auf einer Annahme statt auf einer Angabe beruht:
+   * der Hinweis, der im Report neben dem Betrag steht. Sonst null.
+   */
+  annahmeHinweis: string | null;
+  /** Frage für die Besichtigung, die diese Annahme auflösen würde. */
+  klaerungsfrage: string | null;
 }
 
 /**
@@ -213,10 +250,17 @@ export function leiteStatusAb(
     return {
       status: "NICHT_BEURTEILBAR",
       alterJahre: null,
+      basis: "UNDATIERTE_ERNEUERUNG",
       herleitung:
         "Das Exposé weist eine Erneuerung aus, nennt aber kein Jahr – ohne Zeitpunkt lässt sich der " +
-        "Erneuerungsbedarf nicht bestimmen. Beim Besichtigungstermin nach dem Jahr der Maßnahme fragen. " +
+        "Erneuerungsbedarf nicht bestimmen. " +
         `Beleg: „${(fakten.zitatAusExpose ?? "").trim()}“`,
+      annahmeHinweis:
+        "Erneuerung belegt, aber ohne Jahresangabe. Dieser Posten ist deshalb NICHT in der Summe " +
+        "enthalten – der unten genannte Betrag wäre einzuplanen, falls die Maßnahme länger zurückliegt " +
+        `als die übliche Nutzungsdauer (${dauer.bezeichnung}, ${dauer.jahreMin}–${dauer.jahreMax} Jahre).`,
+      klaerungsfrage:
+        `In welchem Jahr wurde ${GEWERK_IM_SATZ[gewerk]} erneuert? Das Exposé nennt die Maßnahme, aber kein Jahr.`,
     };
   }
 
@@ -230,13 +274,30 @@ export function leiteStatusAb(
     return {
       status: "NICHT_BEURTEILBAR",
       alterJahre: null,
+      basis: "UNBEKANNT",
       herleitung: belegt
         ? "Erneuerung im Exposé erwähnt, aber ohne Jahresangabe – und ohne Baujahr lässt sich kein Alter bestimmen."
         : "Weder Baujahr noch Erneuerungsjahr bekannt – das Alter des Gewerks ist nicht bestimmbar.",
+      annahmeHinweis:
+        "Ohne Baujahr und ohne Erneuerungsjahr ist kein Kostenansatz möglich. Dieser Posten fehlt in der Summe.",
+      klaerungsfrage: `Baujahr des Hauses und Jahr der letzten Erneuerung von ${GEWERK_IM_SATZ[gewerk]} erfragen.`,
     };
   }
 
   const alter = bewertungsjahr - bezugsjahr;
+  const ausBaujahr = !(belegt && fakten.erneuerungsJahr !== null);
+  const basis: StatusBasis = ausBaujahr ? "BAUJAHR" : "ERNEUERUNGSJAHR";
+  // Ein aus dem Baujahr gerechneter Posten unterstellt, dass seit dem Bau
+  // nichts erneuert wurde. Das steht so nicht im Exposé – es steht dort nur
+  // nichts Gegenteiliges. Der Unterschied gehört neben den Betrag.
+  const annahmeHinweis = ausBaujahr
+    ? `Das Exposé nennt kein Erneuerungsjahr für dieses Gewerk. Gerechnet wurde deshalb ab Baujahr ${bezugsjahr}, ` +
+      "also unter der Annahme, dass seit dem Bau nichts erneuert wurde. Nennt der Verkäufer ein Erneuerungsjahr, " +
+      "sinkt dieser Betrag oder entfällt."
+    : null;
+  const klaerungsfrage = ausBaujahr
+    ? `In welchem Jahr wurde ${GEWERK_IM_SATZ[gewerk]} zuletzt erneuert?`
+    : null;
   const quelle =
     belegt && fakten.erneuerungsJahr !== null
       ? `Erneuerung ${fakten.erneuerungsJahr} laut Exposé`
@@ -249,6 +310,9 @@ export function leiteStatusAb(
       herleitung:
         `${quelle} → ${alter} Jahre alt. Die übliche Nutzungsdauer (${dauer.bezeichnung}, ` +
         `${dauer.jahreMin}–${dauer.jahreMax} Jahre) ist überschritten.`,
+      basis,
+      annahmeHinweis,
+      klaerungsfrage,
     };
   }
   if (alter >= dauer.jahreMin) {
@@ -258,6 +322,9 @@ export function leiteStatusAb(
       herleitung:
         `${quelle} → ${alter} Jahre alt und damit im Erneuerungsfenster ` +
         `(${dauer.bezeichnung}, ${dauer.jahreMin}–${dauer.jahreMax} Jahre). Die Ausgabe ist absehbar und einzuplanen.`,
+      basis,
+      annahmeHinweis,
+      klaerungsfrage,
     };
   }
   // Technisch noch nicht fällig – aber bei schlechter Energieeffizienz ist
@@ -271,6 +338,9 @@ export function leiteStatusAb(
         `(${dauer.bezeichnung}, ${dauer.jahreMin}–${dauer.jahreMax} Jahre). Das Bauteil gehört jedoch zur ` +
         `thermischen Hülle, und die Energiekennwerte des Hauses weisen auf energetischen Nachholbedarf hin – ` +
         `nicht Verschleiß ist hier der Grund, sondern der Wärmeschutz.`,
+      basis,
+      annahmeHinweis,
+      klaerungsfrage,
     };
   }
   return {
@@ -279,5 +349,8 @@ export function leiteStatusAb(
     herleitung:
       `${quelle} → ${alter} Jahre alt. Das liegt unter der üblichen Nutzungsdauer ` +
       `(${dauer.bezeichnung}, ${dauer.jahreMin}–${dauer.jahreMax} Jahre); im Betrachtungszeitraum ist kein Ersatz zu erwarten.`,
+    basis,
+    annahmeHinweis,
+    klaerungsfrage,
   };
 }

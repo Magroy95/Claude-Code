@@ -424,6 +424,50 @@ body {
   font-size: 11px; line-height: 1.55; color: var(--ink-faint);
 }
 
+/* Betrag, der ausgewiesen, aber nicht mitgezaehlt wird. */
+.gewerk-betrag-offen { color: var(--ink-faint); text-decoration: line-through; }
+
+/* Hinweis, dass ein Posten auf einer Annahme statt einer Angabe beruht. */
+.gewerk-annahme {
+  display: block; margin-top: 6px; padding: 6px 9px;
+  border-left: 2px solid var(--ochre);
+  background: color-mix(in srgb, var(--ochre) 8%, transparent);
+  font-size: 11px; line-height: 1.55; color: var(--ink-soft);
+}
+
+/* --- Annahme-Kasten ueber der Gewerke-Tabelle --- */
+.rpt-annahme-box {
+  margin-bottom: 16px; padding: 12px 14px;
+  border-left: 3px solid var(--ochre);
+  background: color-mix(in srgb, var(--ochre) 8%, transparent);
+  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+  break-inside: avoid;
+}
+.rpt-annahme-box > b {
+  display: block; margin-bottom: 6px; font-size: 13px; color: var(--ink);
+}
+.rpt-annahme-box > p {
+  margin: 0 0 6px; font-size: 12.5px; line-height: 1.6; color: var(--ink-soft);
+}
+.rpt-annahme-box > p:last-child { margin-bottom: 0; }
+
+/* --- Fragen zum Erneuerungsstand --- */
+.rpt-fragen {
+  margin-top: 16px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: var(--radius-s);
+  break-inside: avoid;
+}
+.rpt-fragen > b {
+  display: block; margin-bottom: 6px; font-size: 13px; color: var(--ink);
+}
+.rpt-fragen > p {
+  margin: 0 0 8px; font-size: 12px; line-height: 1.6; color: var(--ink-faint);
+}
+.rpt-fragen ol { margin: 0; padding-left: 18px; }
+.rpt-fragen li {
+  font-size: 12.5px; line-height: 1.65; color: var(--ink-soft); margin-bottom: 4px;
+}
+
 /* --- Quellenangaben unter der Gewerke-Tabelle --- */
 .rpt-quellen {
   margin-top: 16px; padding: 12px 14px;

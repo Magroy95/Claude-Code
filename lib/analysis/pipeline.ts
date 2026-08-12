@@ -789,7 +789,14 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
             `${hergeleitet.status} korrigiert – ${hergeleitet.herleitung}`,
         );
       }
-      return { ...g, status: hergeleitet.status, begruendung: hergeleitet.herleitung };
+      return {
+        ...g,
+        status: hergeleitet.status,
+        begruendung: hergeleitet.herleitung,
+        statusBasis: hergeleitet.basis,
+        annahmeHinweis: hergeleitet.annahmeHinweis,
+        klaerungsfrage: hergeleitet.klaerungsfrage,
+      };
     });
 
     // Der Sanierungsstau kommt aus der Referenztabelle: Das Modell beurteilt
@@ -801,8 +808,12 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     // Die Checkliste für den Report um die gerechneten Beträge ergänzen.
     const gewerkeMitKosten = gewerkeMitStatus.map((g) => {
       const berechnet = stau.posten.find((p) => p.gewerk === g.gewerk);
-      if (!berechnet) return { ...g, kostenMinEur: null, kostenMaxEur: null };
-      return { ...g, ...berechnet };
+      if (berechnet) return { ...g, ...berechnet, ausserhalbDerSumme: false };
+      // Nicht beurteilbare Gewerke bekommen ihren Betrag ebenfalls, aber
+      // ausdrücklich als nicht mitgezählt markiert.
+      const offen = stau.nichtBeurteilbarePosten.find((p) => p.gewerk === g.gewerk);
+      if (offen) return { ...g, ...offen, ausserhalbDerSumme: true };
+      return { ...g, kostenMinEur: null, kostenMaxEur: null };
     });
     if (nichtBeurteilbar.length > 0) {
       console.warn(

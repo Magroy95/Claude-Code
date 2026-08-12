@@ -295,6 +295,17 @@ export function Report({
   const gewerkeQuellen = [
     ...new Set((gewerke ?? []).flatMap((g) => (g.status === "HANDLUNGSBEDARF" ? (g.quellen ?? []) : []))),
   ].sort();
+  // Wie viel der Summe auf einer Annahme statt auf einer Angabe beruht. Das
+  // gehört sichtbar neben die Zahl: Ein aus dem Baujahr gerechneter Posten
+  // fällt in sich zusammen, sobald der Verkäufer ein Erneuerungsjahr nennt.
+  const ohneJahr = (gewerke ?? []).filter(
+    (g) => g.statusBasis === "BAUJAHR" && g.status === "HANDLUNGSBEDARF",
+  );
+  const ohneJahrSummeMin = ohneJahr.reduce((s, g) => s + (g.kostenMinEur ?? 0), 0);
+  const ohneJahrSummeMax = ohneJahr.reduce((s, g) => s + (g.kostenMaxEur ?? 0), 0);
+  const klaerungsfragen = (gewerke ?? [])
+    .map((g) => g.klaerungsfrage)
+    .filter((f): f is string => typeof f === "string" && f.length > 0);
   const hypothesenByKategorie = (
     ["KAUFENTSCHEIDEND", "KOSTENRELEVANT", "STRATEGISCH"] as const
   ).map((kategorie) => ({
@@ -584,6 +595,31 @@ export function Report({
             hergeben. So ist erkennbar, was tatsächlich geprüft werden konnte und wo eine Lücke
             bleibt. Der geschätzte Sanierungsstau ist die Summe der Positionen mit Handlungsbedarf.
           </p>
+          {ohneJahr.length > 0 && (
+            <div className="rpt-annahme-box">
+              <b>
+                {ohneJahr.length === 1
+                  ? "Eine Position ohne Erneuerungsjahr"
+                  : `${ohneJahr.length} Positionen ohne Erneuerungsjahr`}
+              </b>
+              <p>
+                Für {ohneJahr.length === 1 ? "dieses Gewerk" : "diese Gewerke"} nennt das Exposé kein
+                Jahr der letzten Erneuerung:{" "}
+                <strong>{ohneJahr.map((g) => GEWERK_LABEL[g.gewerk]).join(", ")}</strong>. Gerechnet
+                wurde deshalb ab Baujahr {o.baujahr ?? "—"}, also unter der Annahme, dass seitdem
+                nichts erneuert wurde. Das sind{" "}
+                <strong>
+                  {formatEur(ohneJahrSummeMin)}–{formatEur(ohneJahrSummeMax)}
+                </strong>{" "}
+                der ausgewiesenen Summe.
+              </p>
+              <p>
+                Das ist keine Feststellung, sondern eine Annahme — im Exposé steht nur nichts
+                Gegenteiliges. Jedes Erneuerungsjahr, das der Verkäufer nennt, senkt diesen Betrag
+                oder lässt ihn entfallen. Die Fragen dazu stehen unten.
+              </p>
+            </div>
+          )}
           <p className="rpt-text" style={{ marginBottom: "14px" }}>
             Die Kostenrahmen sind nicht frei geschätzt, sondern gerechnet: Kostenkennwert mal
             Bezugsmenge. Der Kennwert stammt aus einer hinterlegten Referenztabelle, die Menge
@@ -616,14 +652,22 @@ export function Report({
                       </span>
                     </td>
                     <td>
-                      {g.status === "HANDLUNGSBEDARF" && g.kostenMinEur !== null && g.kostenMaxEur !== null ? (
+                      {g.kostenMinEur !== null && g.kostenMaxEur !== null ? (
                         <>
-                          {`${formatEur(g.kostenMinEur)}–${formatEur(g.kostenMaxEur)}`}
+                          <span className={g.ausserhalbDerSumme ? "gewerk-betrag-offen" : undefined}>
+                            {`${formatEur(g.kostenMinEur)}–${formatEur(g.kostenMaxEur)}`}
+                          </span>
                           {g.bezugsmenge !== undefined && g.eurProEinheitMin !== undefined && (
                             <span className="gewerk-rechnung">
                               {g.bezugsmenge.toLocaleString("de-DE")} {g.bezugsEinheit} ×{" "}
                               {formatEur(g.eurProEinheitMin)}–{formatEur(g.eurProEinheitMax ?? 0)}
                             </span>
+                          )}
+                          {g.ausserhalbDerSumme && (
+                            <span className="gewerk-rechnung">nicht in der Summe</span>
+                          )}
+                          {g.statusBasis === "BAUJAHR" && (
+                            <span className="gewerk-rechnung">ab Baujahr gerechnet</span>
                           )}
                         </>
                       ) : (
@@ -632,10 +676,22 @@ export function Report({
                     </td>
                     <td>
                       {g.begruendung}
-                      {g.status === "HANDLUNGSBEDARF" && g.mengenHerleitung && (
+                      {g.mengenHerleitung && (
                         <span className="gewerk-herleitung">
                           {g.leistungsumfang && <>{g.leistungsumfang}. </>}
                           Menge: {g.mengenHerleitung}.
+                        </span>
+                      )}
+                      {/*
+                        Nur der zeilenspezifische Fall wird hier ausgeschrieben.
+                        Der Baujahr-Fall trifft fast alle Zeilen gleichzeitig und
+                        stünde sonst sechsmal wortgleich in der Tabelle – er steht
+                        einmal im Kasten über der Tabelle, in der Zeile genügt die
+                        Markierung "ab Baujahr gerechnet" neben dem Betrag.
+                      */}
+                      {g.annahmeHinweis && g.statusBasis !== "BAUJAHR" && (
+                        <span className="gewerk-annahme">
+                          <strong>Kein Erneuerungsjahr angegeben.</strong> {g.annahmeHinweis}
                         </span>
                       )}
                       {g.unvollstaendigerAnsatz && (
@@ -649,6 +705,21 @@ export function Report({
               </tbody>
             </table>
           </div>
+          {klaerungsfragen.length > 0 && (
+            <div className="rpt-fragen">
+              <b>Fragen zum Erneuerungsstand — für die Besichtigung</b>
+              <p>
+                Diese Jahresangaben fehlen im Exposé und haben unmittelbar Einfluss auf die Summe
+                oben — ohne sie wurde ab Baujahr gerechnet. Jede beantwortete Frage macht die
+                Schätzung belastbarer.
+              </p>
+              <ol>
+                {klaerungsfragen.map((f) => (
+                  <li key={f}>{f}</li>
+                ))}
+              </ol>
+            </div>
+          )}
           {gewerkeQuellen.length > 0 && (
             <div className="rpt-quellen">
               <b>Quellen der Kostenkennwerte</b>

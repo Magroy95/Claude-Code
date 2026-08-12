@@ -478,6 +478,11 @@ export interface Sanierungsstau {
   sanierungsstauMaxEur: number;
   /** Gewerke mit Handlungsbedarf, jeweils mit gerechnetem Kostenrahmen. */
   posten: GewerkKosten[];
+  /**
+   * Nicht beurteilbare Gewerke, ebenfalls mit gerechnetem Kostenrahmen –
+   * ausgewiesen, aber NICHT in der Summe enthalten.
+   */
+  nichtBeurteilbarePosten: GewerkKosten[];
   /** Gewerke, die aus den Unterlagen nicht beurteilbar sind. */
   nichtBeurteilbar: Gewerk[];
   /** Posten, deren Umfang aus dem Exposé nicht bezifferbar ist (Schadstoffrückbau). */
@@ -497,10 +502,20 @@ export function berechneSanierungsstau(
     .filter((g) => g.status === "HANDLUNGSBEDARF")
     .map((g) => berechneGewerkKosten(g.gewerk, objektdaten));
 
+  // Auch für nicht beurteilbare Gewerke wird gerechnet – der Betrag geht
+  // nicht in die Summe ein, wird im Report aber ausgewiesen. Sonst
+  // verschwindet ein Posten wie "Bad laut Exposé erneuert, Jahr unbekannt"
+  // wortlos aus der Aufstellung, und der Leser hält die Summe für
+  // vollständig, obwohl dort eine bezifferbare Lücke klafft.
+  const nichtBeurteilbarePosten = gewerke
+    .filter((g) => g.status === "NICHT_BEURTEILBAR")
+    .map((g) => berechneGewerkKosten(g.gewerk, objektdaten));
+
   return {
     sanierungsstauMinEur: posten.reduce((s, p) => s + p.kostenMinEur, 0),
     sanierungsstauMaxEur: posten.reduce((s, p) => s + p.kostenMaxEur, 0),
     posten,
+    nichtBeurteilbarePosten,
     nichtBeurteilbar: gewerke.filter((g) => g.status === "NICHT_BEURTEILBAR").map((g) => g.gewerk),
     offeneRisiken: posten
       .filter((p) => p.unvollstaendigerAnsatz !== null)
