@@ -1,5 +1,6 @@
 import type { AnalysisReport, Hypothese } from "@/lib/analysis/schema";
 import { DISCLAIMER } from "@/lib/analysis/pipeline";
+import { Bezahlschranke } from "./Bezahlschranke";
 
 type Tone = "gruen" | "gelb" | "rot" | "neutral";
 
@@ -277,11 +278,25 @@ export function Report({
   analysisId,
   createdAt,
   changeSummary,
+  freigeschaltet = true,
+  angemeldet = false,
+  preisEinzel,
+  preisPaket,
 }: {
   report: AnalysisReport;
   analysisId: string;
   createdAt: Date;
   changeSummary?: string | null;
+  /**
+   * Ist der vollständige Report freigeschaltet? Ohne Freischaltung endet die
+   * Darstellung nach den Objektdaten. Standardmäßig true, damit der
+   * PDF-Export und interne Aufrufe unverändert funktionieren – die Seite
+   * setzt den Wert ausdrücklich.
+   */
+  freigeschaltet?: boolean;
+  angemeldet?: boolean;
+  preisEinzel?: string;
+  preisPaket?: string;
 }) {
   const o = report.objektdaten;
   const ampel = AMPEL_CONFIG[report.ampel];
@@ -361,6 +376,13 @@ export function Report({
         </p>
       </section>
 
+      {/* Kennzahlen, Finanzierungsannahmen und Einschätzung gehören zum
+          kostenpflichtigen Teil: Hier steht der bezifferte Sanierungsstau,
+          die monatliche Belastung und die Marktbewertung – also genau das,
+          wofür gezahlt wird. Die Ampel darüber und die Objektdaten darunter
+          bleiben frei. */}
+      {freigeschaltet && (
+        <>
       <div className="rpt-kennzahlen">
         <Kachel
           label="Angebotspreis"
@@ -451,6 +473,8 @@ export function Report({
       <Section title="Einschätzung">
         <p className="rpt-text">{report.marktEinschaetzung}</p>
       </Section>
+        </>
+      )}
 
       <Section title="Objektdaten (aus Exposé extrahiert)">
         <dl className="rpt-dl">
@@ -482,6 +506,20 @@ export function Report({
         )}
       </Section>
 
+      {!freigeschaltet && (
+        <>
+          <Bezahlschranke
+            analysisId={analysisId}
+            angemeldet={angemeldet}
+            preisEinzel={preisEinzel ?? ""}
+            preisPaket={preisPaket ?? ""}
+          />
+          <footer className="rpt-disclaimer">{DISCLAIMER}</footer>
+        </>
+      )}
+
+      {freigeschaltet && (
+      <>
       <Section title="Marktwert-Orientierung">
         <PreiskorridorBar
           min={report.orientierungswertMinEur}
@@ -838,6 +876,8 @@ export function Report({
       </Section>
 
       <footer className="rpt-disclaimer">{DISCLAIMER}</footer>
+      </>
+      )}
     </article>
   );
 }

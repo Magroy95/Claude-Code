@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function AnmeldeForm() {
+export function AnmeldeForm({ weiter }: { weiter?: string }) {
   const [status, setStatus] = useState<"bereit" | "sendet" | "gesendet">("bereit");
   const [fehler, setFehler] = useState<string | null>(null);
 
@@ -10,13 +10,12 @@ export function AnmeldeForm() {
     event.preventDefault();
     setFehler(null);
     setStatus("sendet");
-    const antwort = await fetch("/api/auth/anmelden", {
-      method: "POST",
-      body: new FormData(event.currentTarget),
-    });
-    const daten = await antwort.json().catch(() => ({}));
+    const daten = new FormData(event.currentTarget);
+    if (weiter) daten.set("weiter", weiter);
+    const antwort = await fetch("/api/auth/anmelden", { method: "POST", body: daten });
+    const antwortInhalt = await antwort.json().catch(() => ({}));
     if (!antwort.ok) {
-      setFehler(daten.error ?? "Das hat nicht geklappt. Bitte versuchen Sie es erneut.");
+      setFehler(antwortInhalt.error ?? "Das hat nicht geklappt. Bitte versuchen Sie es erneut.");
       setStatus("bereit");
       return;
     }

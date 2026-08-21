@@ -12,10 +12,10 @@ export const metadata = {
 export default async function AnmeldenSeite({
   searchParams,
 }: {
-  searchParams: Promise<{ fehler?: string }>;
+  searchParams: Promise<{ fehler?: string; weiter?: string }>;
 }) {
   if (await aktuellerNutzer()) redirect("/konto");
-  const { fehler } = await searchParams;
+  const { fehler, weiter } = await searchParams;
 
   return (
     <main className="mx-auto max-w-md px-6 py-20">
@@ -31,7 +31,7 @@ export default async function AnmeldenSeite({
         Wir schicken Ihnen einen Anmeldelink per E-Mail — ohne Passwort. Haben Sie noch kein Konto,
         wird es dabei angelegt.
       </p>
-      <AnmeldeForm />
+      <AnmeldeForm weiter={weiter} />
     </main>
   );
 }

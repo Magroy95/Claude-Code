@@ -9,8 +9,17 @@ import { loeseMagicLinkEin, SESSION_COOKIE, SESSION_GUELTIG_TAGE } from "@/lib/a
  * und Route Handlern). Ein erster Versuch als Seite scheiterte genau daran –
  * und verbrauchte dabei das Token, ohne anzumelden.
  */
+/** Nur seiteninterne Ziele zulassen – sonst wird der Anmeldelink zur
+ *  Weiterleitung auf fremde Seiten missbraucht (Open Redirect). */
+function sicheresZiel(weiter: string | null): string {
+  if (!weiter) return "/konto";
+  if (!weiter.startsWith("/") || weiter.startsWith("//")) return "/konto";
+  return weiter;
+}
+
 export async function GET(request: Request) {
   const token = new URL(request.url).searchParams.get("token");
+  const weiter = new URL(request.url).searchParams.get("weiter");
   const ergebnis = token ? await loeseMagicLinkEin(token) : null;
 
   // Ziel relativ zum aufrufenden Host, nicht zur konfigurierten
@@ -20,7 +29,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/anmelden?fehler=link", request.url));
   }
 
-  const antwort = NextResponse.redirect(new URL("/konto", request.url));
+  const antwort = NextResponse.redirect(new URL(sicheresZiel(weiter), request.url));
   antwort.cookies.set(SESSION_COOKIE, ergebnis.sessionToken, {
     httpOnly: true,
     sameSite: "lax",

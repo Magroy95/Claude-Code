@@ -3,11 +3,24 @@ import { prisma } from "@/lib/db/prisma";
 import { analysisReportSchema } from "@/lib/analysis/schema";
 import { EnrichForm } from "@/app/components/EnrichForm";
 
+/**
+ * Aktualisierung nach der Besichtigung.
+ *
+ * Vorerst nicht Teil des Leistungsumfangs – weder im Einzelkauf noch im
+ * Paket. Der Weg ist bewusst nur gesperrt und nicht gelöscht: Die
+ * Impact-Pipeline dahinter funktioniert und soll in einer späteren
+ * Ausbaustufe wieder freigeschaltet werden. Bis dahin wäre ein erreichbares
+ * Formular ein Versprechen, das die AGB nicht decken.
+ */
+const AKTUALISIERUNG_FREIGESCHALTET = false;
+
 export default async function AnreichernPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
+  if (!AKTUALISIERUNG_FREIGESCHALTET) notFound();
+
   const { id } = await params;
   const analysis = await prisma.analysis.findUnique({
     where: { id },
