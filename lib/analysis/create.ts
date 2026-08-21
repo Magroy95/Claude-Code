@@ -2,7 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { storage } from "@/lib/storage";
 import { generateAnalysisId } from "@/lib/id";
-import { runAnalysisPipeline } from "./pipeline";
+import { stosseAnalyseAn } from "./anstossen";
 import { normalisiereEmail } from "@/lib/auth/session";
 
 /**
@@ -101,9 +101,10 @@ export async function createAnalysisFromForm(
     },
   });
 
-  // Läuft im Hintergrund weiter; Fehler werden in der Pipeline selbst als
-  // Analysis.status = ERROR festgehalten.
-  void runAnalysisPipeline(id);
+  // Die Auswertung läuft in einer eigenen Hintergrundroute, nicht in diesem
+  // Aufruf – siehe anstossen.ts. Fehler hält die Pipeline selbst als
+  // Analysis.status = ERROR fest.
+  await stosseAnalyseAn(id);
 
   return { ok: true, id };
 }

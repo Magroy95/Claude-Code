@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
-import { runAnalysisPipeline } from "@/lib/analysis/pipeline";
+import { stosseAnalyseAn } from "@/lib/analysis/anstossen";
 
 export async function POST(
   _request: Request,
@@ -30,7 +30,7 @@ export async function POST(
     where: { id },
     data: { status: "PROCESSING", errorMessage: null },
   });
-  void runAnalysisPipeline(id);
+  await stosseAnalyseAn(id);
 
   return NextResponse.json({ ok: true });
 }

@@ -741,10 +741,28 @@ const AGENT_RETRY_OPTIONS = {
 };
 
 export async function runAnalysisPipeline(analysisId: string): Promise<void> {
-  await prisma.analysis.update({
-    where: { id: analysisId },
+  // Den Lauf beanspruchen, statt den Status blind zu setzen.
+  //
+  // Zwei Wege können hier gleichzeitig ankommen: der Anstoß über die
+  // Hintergrundroute und der Ersatzweg im aufrufenden Prozess, falls dieser
+  // Anstoß zu scheitern schien. Genau das ist im Test passiert – zwei
+  // Pipelines liefen auf demselben Datensatz, überschrieben sich gegenseitig
+  // die Zwischenstände und endeten im Fehler. Nebenbei kostete es doppelt.
+  //
+  // updateMany mit Statusbedingung ist eine einzelne atomare Anweisung: Nur
+  // wer den Datensatz von PENDING oder ERROR auf PROCESSING dreht, hat den
+  // Zuschlag. Netlify stellt Hintergrundaufrufe im Fehlerfall ausserdem
+  // erneut zu – auch dagegen schützt das.
+  const beansprucht = await prisma.analysis.updateMany({
+    where: { id: analysisId, status: { in: ["PENDING", "ERROR"] } },
     data: { status: "PROCESSING" },
   });
+  if (beansprucht.count === 0) {
+    console.info(
+      `[HauskaufChecker] Analyse ${analysisId} wird bereits ausgewertet – zweiter Anlauf verworfen.`,
+    );
+    return;
+  }
 
   try {
     const analysis = await prisma.analysis.findUniqueOrThrow({ where: { id: analysisId } });

@@ -1,6 +1,26 @@
+# Netlify-Konfiguration für HauskaufChecker.
+
 [build]
-  command = "npm run build"
+  command = "npx prisma generate && npm run build"
   publish = ".next"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+# Der PDF-Export startet einen Browser und druckt eine vollständige
+# Reportseite – das dauert deutlich länger als eine gewöhnliche Anfrage.
+[functions."api/analyses/*/pdf"]
+  # @sparticuz/chromium wird zur Laufzeit entpackt und muss deshalb als
+  # Datei mitgeliefert werden, nicht gebündelt.
+  external_node_modules = ["@sparticuz/chromium", "playwright-core"]
+  included_files = ["node_modules/@sparticuz/chromium/**"]
+
+# Täglicher Löschlauf. Die Fristen stehen in lib/loeschung.ts; hier wird
+# nur der Takt festgelegt.
+[[scheduled.functions]]
+  name = "loeschung"
+  cron = "0 3 * * *"
+
+[dev]
+  command = "npm run dev"
+  targetPort = 3000
