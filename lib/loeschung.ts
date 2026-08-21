@@ -16,6 +16,7 @@
 // | Abgelaufene Sitzungen        | sofort       | Wertlos                                |
 // | Verbrauchte Anmeldelinks     | 7 Tage       | Nur zur Fehlersuche                    |
 // | Konto nach Löschanforderung  | 30 Tage      | Widerrufsfenster bei Irrtum            |
+// | Messereignisse               | 365 Tage     | Zeitraumvergleich, danach wertlos      |
 // | Bestellungen und Belege      | 8 Jahre      | § 147 AO                               |
 //
 // Bestellungen bleiben bewusst erhalten, auch wenn das Konto verschwindet:
@@ -29,6 +30,11 @@ export const FRIST_EXPOSE_TAGE = 90;
 export const FRIST_TEASER_TAGE = 14;
 export const FRIST_MAGICLINK_TAGE = 7;
 export const FRIST_KONTO_LOESCHUNG_TAGE = 30;
+/**
+ * Messereignisse. Ein Jahr, damit sich Zeiträume vergleichen lassen –
+ * darüber hinaus haben sie keinen Wert und würden nur noch Bestand sein.
+ */
+export const FRIST_EREIGNISSE_TAGE = 365;
 
 function vorTagen(tage: number): Date {
   return new Date(Date.now() - tage * 24 * 60 * 60_000);
@@ -40,6 +46,7 @@ export interface LoeschBericht {
   sitzungen: number;
   anmeldelinks: number;
   konten: number;
+  ereignisse: number;
   fehler: string[];
 }
 
@@ -125,6 +132,7 @@ export async function fuehreLoeschungenDurch(): Promise<LoeschBericht> {
     sitzungen: 0,
     anmeldelinks: 0,
     konten: 0,
+    ereignisse: 0,
     fehler: [],
   };
 
@@ -140,6 +148,11 @@ export async function fuehreLoeschungenDurch(): Promise<LoeschBericht> {
     },
   });
   bericht.anmeldelinks = links.count;
+
+  const ereignisse = await prisma.ereignis.deleteMany({
+    where: { createdAt: { lt: vorTagen(FRIST_EREIGNISSE_TAGE) } },
+  });
+  bericht.ereignisse = ereignisse.count;
 
   await loescheAlteExposes(bericht);
   await loescheTeaser(bericht);

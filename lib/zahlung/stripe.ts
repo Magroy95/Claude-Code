@@ -14,6 +14,7 @@ import Stripe from "stripe";
 import { prisma } from "@/lib/db/prisma";
 import { PAKET_LAUFZEIT_TAGE, PRODUKT } from "@/lib/auth/berechtigung";
 import { sendeKaufbeleg } from "@/lib/mail";
+import { EREIGNIS, halteFest } from "@/lib/ereignisse";
 import { siteConfig } from "@/lib/site-config";
 import type { EntitlementKind } from "@/app/generated/prisma/enums";
 
@@ -164,6 +165,7 @@ export async function verbucheBezahlung(sitzung: Stripe.Checkout.Session): Promi
     await schalteFrei(analysisId, bestellung.userId);
   }
 
+  await halteFest(EREIGNIS.KAUF_ABGESCHLOSSEN, analysisId || undefined);
   await sendeKaufbeleg(
     bestellung.user.email,
     PRODUKT[bestellung.kind].bezeichnung,

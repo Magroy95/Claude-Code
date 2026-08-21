@@ -49,6 +49,7 @@ import { bewerteHypothesen } from "./risiko";
 import { berechneSanierungsstau, energetischerBedarf } from "./sanierungskosten";
 import { berechneSachwert } from "./sachwert";
 import { sendeAnalyseFehlgeschlagen, sendeAnalyseFertig } from "@/lib/mail";
+import { EREIGNIS, halteFest } from "@/lib/ereignisse";
 import { leiteStatusAb } from "./nutzungsdauer";
 
 const DISCLAIMER_HINWEIS =
@@ -1014,6 +1015,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
     ]);
     // Fertigmeldung. Bewusst ohne Reportinhalt – die Mail sagt nur, dass
     // etwas fertig ist, und verlinkt ins Konto.
+    await halteFest(EREIGNIS.ANALYSE_FERTIG, analysisId);
     await benachrichtigeUeberErgebnis(analysisId, true);
   } catch (error) {
     await prisma.analysis.update({
@@ -1023,6 +1025,7 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
         errorMessage: error instanceof Error ? error.message : "Unbekannter Fehler",
       },
     });
+    await halteFest(EREIGNIS.ANALYSE_FEHLGESCHLAGEN, analysisId);
     await benachrichtigeUeberErgebnis(analysisId, false);
   }
 }

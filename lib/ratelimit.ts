@@ -6,9 +6,9 @@
 // Anmeldeendpunkt verschickt Mails, taugt also zum Zumüllen fremder
 // Postfächer.
 //
-// Umsetzung bewusst in der Datenbank statt im Arbeitsspeicher: Auf Vercel
-// läuft jede Anfrage potenziell in einer eigenen Instanz, ein Zähler im
-// Prozess wäre dort wirkungslos. Redis wäre schneller, aber ein weiterer
+// Umsetzung bewusst in der Datenbank statt im Arbeitsspeicher: Auf Netlify
+// läuft jede Anfrage potenziell in einer eigenen Funktionsinstanz, ein
+// Zähler im Prozess wäre dort wirkungslos. Redis wäre schneller, aber ein weiterer
 // Dienst mit eigenem Auftragsverarbeitungsvertrag; solange die Last klein
 // ist, reicht Postgres.
 
@@ -29,6 +29,8 @@ export const LIMITS = {
   anmeldelink: { anzahl: 5, fensterSekunden: 15 * 60 },
   /** Zahlungsvorgänge: großzügiger, aber nicht unbegrenzt. */
   kaufStarten: { anzahl: 20, fensterSekunden: 60 * 60 },
+  /** Messereignisse: reichlich, aber nicht als Schreibzugang missbrauchbar. */
+  ereignis: { anzahl: 60, fensterSekunden: 60 * 60 },
 } satisfies Record<string, Limit>;
 
 /**

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { storage } from "@/lib/storage";
 import { generateAnalysisId } from "@/lib/id";
 import { stosseAnalyseAn } from "./anstossen";
+import { EREIGNIS, halteFest } from "@/lib/ereignisse";
 import { normalisiereEmail } from "@/lib/auth/session";
 
 /**
@@ -104,6 +105,7 @@ export async function createAnalysisFromForm(
   // Die Auswertung läuft in einer eigenen Hintergrundroute, nicht in diesem
   // Aufruf – siehe anstossen.ts. Fehler hält die Pipeline selbst als
   // Analysis.status = ERROR fest.
+  await halteFest(EREIGNIS.ANALYSE_GESTARTET, id);
   await stosseAnalyseAn(id);
 
   return { ok: true, id };

@@ -3,6 +3,7 @@ import { ANBIETER } from "@/lib/site-config";
 import {
   FRIST_EXPOSE_TAGE,
   FRIST_KONTO_LOESCHUNG_TAGE,
+  FRIST_EREIGNISSE_TAGE,
   FRIST_MAGICLINK_TAGE,
   FRIST_TEASER_TAGE,
 } from "@/lib/loeschung";
@@ -70,6 +71,15 @@ export default function DatenschutzSeite() {
         Für den Schutz vor Missbrauch zählen wir Anfragen je Absender. Ihre IP-Adresse wird dabei
         nur als nicht rückrechenbarer Hashwert gespeichert.
       </p>
+      <p>
+        Um zu erkennen, an welcher Stelle unser Angebot nicht funktioniert, zählen wir außerdem
+        einzelne Schritte im Ablauf mit — etwa dass eine Analyse gestartet oder ein Report fertig
+        wurde. Gespeichert wird ausschließlich der Name des Schritts und, wo vorhanden, die Kennung
+        der betroffenen Analyse. <strong>Keine IP-Adresse, keine Browserkennung, keine
+        Verweisquelle und keine Wiedererkennung über Besuche hinweg.</strong> Diese Zählung erfolgt
+        auf unseren eigenen Systemen; ein externer Analysedienst ist nicht beteiligt.
+        Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO.
+      </p>
 
       <h2>Empfänger</h2>
       <p>
@@ -91,9 +101,9 @@ export default function DatenschutzSeite() {
             <td>Inhalt des Exposés, Ihre Zusatzangaben</td>
           </tr>
           <tr>
-            <td>Vercel Inc. (Region Frankfurt)</td>
-            <td>Betrieb der Anwendung</td>
-            <td>Zugriffsdaten</td>
+            <td>Netlify (EU-Region)</td>
+            <td>Betrieb der Anwendung und Ablage der hochgeladenen Exposés</td>
+            <td>Zugriffsdaten, hochgeladenes Exposé</td>
           </tr>
           <tr>
             <td>Datenbank-Hoster (EU)</td>
@@ -157,6 +167,11 @@ export default function DatenschutzSeite() {
             <td>Konto nach Löschanforderung</td>
             <td>{FRIST_KONTO_LOESCHUNG_TAGE} Tage</td>
             <td>Nachfrist, falls die Löschung ein Versehen war</td>
+          </tr>
+          <tr>
+            <td>Zählwerte zum Ablauf</td>
+            <td>{FRIST_EREIGNISSE_TAGE} Tage</td>
+            <td>Vergleich von Zeiträumen; danach ohne Aussagewert</td>
           </tr>
           <tr>
             <td>Rechnungs- und Zahlungsbelege</td>

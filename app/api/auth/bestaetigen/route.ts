@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { loeseMagicLinkEin, SESSION_COOKIE, SESSION_GUELTIG_TAGE } from "@/lib/auth/session";
+import { EREIGNIS, halteFest } from "@/lib/ereignisse";
 
 /**
  * Ziel des Anmeldelinks.
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL("/anmelden?fehler=link", request.url));
   }
 
+  await halteFest(EREIGNIS.ANMELDUNG_ABGESCHLOSSEN);
   const antwort = NextResponse.redirect(new URL(sicheresZiel(weiter), request.url));
   antwort.cookies.set(SESSION_COOKIE, ergebnis.sessionToken, {
     httpOnly: true,

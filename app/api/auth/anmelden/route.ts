@@ -3,6 +3,7 @@ import { erstelleMagicLink, normalisiereEmail } from "@/lib/auth/session";
 import { sendeAnmeldelink } from "@/lib/mail";
 import { ermittleIp, pruefeLimit, warteText } from "@/lib/ratelimit";
 import { siteConfig } from "@/lib/site-config";
+import { EREIGNIS, halteFest } from "@/lib/ereignisse";
 
 // Grobe Formprüfung. Eine strengere Validierung bringt nichts – ob die
 // Adresse existiert, zeigt erst die Zustellung.
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
         : "";
     const link = `${siteConfig.url}/api/auth/bestaetigen?token=${encodeURIComponent(token)}${zielAnhang}`;
     await sendeAnmeldelink(email, link);
+    await halteFest(EREIGNIS.ANMELDUNG_ANGEFORDERT);
   } catch (fehler) {
     console.error("[HauskaufChecker] Anmeldelink fehlgeschlagen:", fehler);
     // Bewusst dieselbe Antwort wie im Erfolgsfall: Ob zu einer Adresse ein

@@ -1,6 +1,7 @@
 import type { AnalysisReport, Hypothese } from "@/lib/analysis/schema";
 import { DISCLAIMER } from "@/lib/analysis/pipeline";
 import { Bezahlschranke } from "./Bezahlschranke";
+import { Rueckmeldung, SchrankeGesehen } from "./Rueckmeldung";
 
 type Tone = "gruen" | "gelb" | "rot" | "neutral";
 
@@ -569,6 +570,7 @@ export function Report({
             preisPaket={preisPaket ?? ""}
             weitereHypothesen={weitereHypothesen}
           />
+          <SchrankeGesehen analysisId={analysisId} />
           <footer className="rpt-disclaimer">{DISCLAIMER}</footer>
         </>
       )}
@@ -929,6 +931,8 @@ export function Report({
           ))}
         </ul>
       </Section>
+
+      <Rueckmeldung analysisId={analysisId} />
 
       <footer className="rpt-disclaimer">{DISCLAIMER}</footer>
       </>

@@ -215,3 +215,27 @@ model RateLimitEreignis {
 
   @@index([key, createdAt])
 }
+
+// Was im Ablauf passiert – bewusst als eigene Tabelle statt über einen
+// externen Dienst.
+//
+// Ein Analysewerkzeug wie Plausible oder Umami wäre bequemer, brächte aber
+// einen weiteren Auftragsverarbeitungsvertrag und einen Empfänger mehr in
+// der Datenschutzerklärung. Für die Fragen, die wir wirklich beantworten
+// müssen – wo brechen Leute ab, wie viele sehen die Schranke, wie viele
+// kaufen – reicht ein Zähler in der eigenen Datenbank.
+//
+// Bewusst NICHT gespeichert: IP-Adresse, Browserkennung, Verweisquelle. Ohne
+// diese Merkmale ist der Eintrag nicht auf eine Person zurückführbar, es
+// braucht keine Einwilligung und kein Cookie-Banner.
+model Ereignis {
+  id         String   @id @default(uuid())
+  name       String
+  // Nur gesetzt, wenn das Ereignis zu einer Analyse gehört. Ohne Relation,
+  // damit die Auswertung eine gelöschte Analyse überdauert – die Zahl bleibt
+  // aussagekräftig, der Bezug verschwindet.
+  analysisId String?
+  createdAt  DateTime @default(now())
+
+  @@index([name, createdAt])
+}

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { aktuellerNutzer } from "@/lib/auth/session";
 import { starteKauf, stripeKonfiguriert } from "@/lib/zahlung/stripe";
 import { ermittleIp, pruefeLimit, warteText } from "@/lib/ratelimit";
+import { EREIGNIS, halteFest } from "@/lib/ereignisse";
 
 export async function POST(request: Request) {
   const nutzer = await aktuellerNutzer();
@@ -37,6 +38,10 @@ export async function POST(request: Request) {
       kind,
       analysisId: typeof analysisId === "string" && analysisId ? analysisId : undefined,
     });
+    await halteFest(
+      EREIGNIS.KAUF_GESTARTET,
+      typeof analysisId === "string" && analysisId ? analysisId : undefined,
+    );
     return NextResponse.json({ url });
   } catch (fehler) {
     console.error("[HauskaufChecker] Kauf konnte nicht gestartet werden:", fehler);
