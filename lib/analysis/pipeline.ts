@@ -47,6 +47,7 @@ import {
 import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
 import { bewerteHypothesen } from "./risiko";
 import { berechneSanierungsstau, energetischerBedarf } from "./sanierungskosten";
+import { sendeAnalyseFehlgeschlagen, sendeAnalyseFertig } from "@/lib/mail";
 import { leiteStatusAb } from "./nutzungsdauer";
 
 const DISCLAIMER_HINWEIS =
@@ -977,6 +978,9 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
         data: { status: "DONE", pipelineState: Prisma.JsonNull },
       }),
     ]);
+    // Fertigmeldung. Bewusst ohne Reportinhalt – die Mail sagt nur, dass
+    // etwas fertig ist, und verlinkt ins Konto.
+    await benachrichtigeUeberErgebnis(analysisId, true);
   } catch (error) {
     await prisma.analysis.update({
       where: { id: analysisId },
@@ -985,6 +989,34 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
         errorMessage: error instanceof Error ? error.message : "Unbekannter Fehler",
       },
     });
+    await benachrichtigeUeberErgebnis(analysisId, false);
+  }
+}
+
+/**
+ * Verschickt die Fertig- bzw. Fehlermeldung. Schlägt der Versand fehl, wird
+ * das protokolliert und sonst nichts – eine fertige Analyse darf nicht
+ * daran scheitern, dass ein Mailserver gerade nicht erreichbar ist.
+ */
+async function benachrichtigeUeberErgebnis(analysisId: string, erfolgreich: boolean): Promise<void> {
+  try {
+    const analyse = await prisma.analysis.findUnique({
+      where: { id: analysisId },
+      select: {
+        email: true,
+        results: { orderBy: { version: "desc" }, take: 1, select: { payload: true } },
+      },
+    });
+    if (!analyse?.email) return;
+
+    if (!erfolgreich) {
+      await sendeAnalyseFehlgeschlagen(analyse.email, analysisId);
+      return;
+    }
+    const report = analyse.results[0]?.payload as { objektdaten?: { adresseOderLage?: string } } | undefined;
+    await sendeAnalyseFertig(analyse.email, analysisId, report?.objektdaten?.adresseOderLage ?? null);
+  } catch (fehler) {
+    console.error(`[HauskaufChecker] Benachrichtigung zu ${analysisId} fehlgeschlagen:`, fehler);
   }
 }
 

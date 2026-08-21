@@ -3,6 +3,14 @@ import { prisma } from "@/lib/db/prisma";
 import { storage } from "@/lib/storage";
 import { generateAnalysisId } from "@/lib/id";
 import { runAnalysisPipeline } from "./pipeline";
+import { normalisiereEmail } from "@/lib/auth/session";
+
+/**
+ * Obergrenze für das Exposé. Große Dateien treiben die Tokenkosten und
+ * damit direkt unsere Kosten je Analyse – 15 MB reichen für jedes reale
+ * Exposé mit Fotos.
+ */
+const MAX_EXPOSE_BYTES = 15 * 1024 * 1024;
 
 const ALLOWED_EXPOSE_TYPES = new Set([
   "application/pdf",
@@ -30,6 +38,8 @@ export type CreateAnalysisResult =
 
 export async function createAnalysisFromForm(
   formData: FormData,
+  /** Angemeldeter Nutzer, falls vorhanden – dann gehört die Analyse zum Konto. */
+  userId?: string,
 ): Promise<CreateAnalysisResult> {
   const expose = formData.get("expose");
   if (!(expose instanceof File) || expose.size === 0) {
@@ -39,6 +49,12 @@ export async function createAnalysisFromForm(
     return {
       ok: false,
       error: "Exposé muss ein PDF oder Bild (PNG/JPEG/WebP) sein.",
+    };
+  }
+  if (expose.size > MAX_EXPOSE_BYTES) {
+    return {
+      ok: false,
+      error: `Das Exposé ist zu groß (maximal ${MAX_EXPOSE_BYTES / 1024 / 1024} MB).`,
     };
   }
 
@@ -62,10 +78,15 @@ export async function createAnalysisFromForm(
     namespace: id,
   });
 
+  // Ohne Konto bleibt userId leer: Das ist der kostenlose Teaser, der nach
+  // 14 Tagen gelöscht wird. Meldet sich derselbe Mensch später mit dieser
+  // Adresse an, wird die Analyse seinem Konto zugeordnet (siehe
+  // loeseMagicLinkEin).
   await prisma.analysis.create({
     data: {
       id,
-      email: parsed.data.email,
+      userId: userId ?? null,
+      email: normalisiereEmail(parsed.data.email),
       eigenkapital: parsed.data.eigenkapital,
       verkaufsart: parsed.data.verkaufsart,
       freitext: parsed.data.freitext || null,

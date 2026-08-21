@@ -205,3 +205,13 @@ model HypothesisAnswerAttachment {
 
   @@unique([hypothesisAnswerId, attachmentId])
 }
+
+// Zähler für den Missbrauchsschutz (lib/ratelimit.ts). Der Schlüssel ist ein
+// Hash aus Bereich und Kennung – die IP-Adresse steht nie im Klartext hier.
+model RateLimitEreignis {
+  id        String   @id @default(uuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}
