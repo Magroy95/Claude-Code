@@ -1,29 +1,43 @@
-export const metadata = { title: "Impressum – HauskaufChecker" };
+import { RechtsSeite } from "@/app/components/RechtsSeite";
+import { ANBIETER } from "@/lib/site-config";
 
-export default function ImpressumPage() {
+export const metadata = { title: "Impressum" };
+
+export default function ImpressumSeite() {
   return (
-    <div className="mx-auto max-w-2xl px-4 py-12 prose prose-sm dark:prose-invert">
-      <h1>Impressum</h1>
-      <p className="text-sm text-black/60 dark:text-white/60">
-        Platzhalter: Bitte vor Live-Betrieb mit den echten Anbieterangaben
-        gemäß § 5 TMG befüllen (Name/Firma, ladungsfähige Anschrift,
-        Kontaktdaten, ggf. Vertretungsberechtigte, Registereintrag,
-        Umsatzsteuer-ID).
-      </p>
-      <h2>Angaben gemäß § 5 TMG</h2>
+    <RechtsSeite titel="Impressum">
+      <h2>Angaben gemäß § 5 DDG</h2>
       <p>
-        [Name / Firma]
+        {ANBIETER.name}
         <br />
-        [Straße, Hausnummer]
+        {ANBIETER.strasse}
         <br />
-        [PLZ, Ort]
+        {ANBIETER.plzOrt}
       </p>
+
       <h2>Kontakt</h2>
+      <p>E-Mail: {ANBIETER.email}</p>
+
+      <h2>Umsatzsteuer</h2>
       <p>
-        E-Mail: [kontakt@beispiel.de]
+        Gemäß § 19 UStG wird keine Umsatzsteuer erhoben und daher auf Rechnungen nicht ausgewiesen
+        (Kleinunternehmerregelung).
       </p>
+
       <h2>Verantwortlich für den Inhalt</h2>
-      <p>[Name der verantwortlichen Person]</p>
-    </div>
+      <p>
+        {ANBIETER.verantwortlich}
+        <br />
+        {ANBIETER.strasse}
+        <br />
+        {ANBIETER.plzOrt}
+      </p>
+
+      <h2>Verbraucherstreitbeilegung</h2>
+      <p>
+        Wir sind nicht verpflichtet und nicht bereit, an Streitbeilegungsverfahren vor einer
+        Verbraucherschlichtungsstelle teilzunehmen.
+      </p>
+    </RechtsSeite>
   );
 }

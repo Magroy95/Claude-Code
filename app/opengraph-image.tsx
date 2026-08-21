@@ -16,8 +16,9 @@ export default function OpengraphImage() {
           flexDirection: "column",
           justifyContent: "center",
           padding: "80px",
-          background: "#0a0a0a",
-          color: "#ededed",
+          // Farbwelt des Reports statt Schwarz: Papier und Ziegelrot.
+          background: "#e7e2d2",
+          color: "#21201c",
           fontFamily: "Arial, Helvetica, sans-serif",
         }}
       >
@@ -29,12 +30,12 @@ export default function OpengraphImage() {
             marginTop: 24,
             fontSize: 30,
             lineHeight: 1.4,
-            color: "#a1a1a1",
+            color: "#5b564c",
             maxWidth: 900,
           }}
         >
-          Fundierte KI-Ersteinschätzung deiner Wunschimmobilie – bevor du für
-          ein Gutachten zahlst.
+          Ersteinschätzung zu Substanz, Sanierungskosten und Marktwert – vor
+          der Besichtigung, nicht vor dem Notartermin.
         </div>
       </div>
     ),

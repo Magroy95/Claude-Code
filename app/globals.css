@@ -498,3 +498,30 @@ body {
   background: color-mix(in srgb, var(--blueprint) 7%, transparent);
   font-size: 13px; font-style: italic; color: var(--ink-soft); line-height: 1.55;
 }
+
+/* ============================================================
+   Rechtstexte
+   Bewusst eigenständig und ohne das Report-Designsystem:
+   Impressum, Datenschutz, AGB und Widerruf sollen vor allem
+   lesbar und druckbar sein.
+   ============================================================ */
+.rechtstext { font-size: 14.5px; line-height: 1.7; }
+.rechtstext h2 { font-size: 16px; font-weight: 600; margin: 28px 0 8px; }
+.rechtstext h3 { font-size: 14.5px; font-weight: 600; margin: 18px 0 6px; }
+.rechtstext p { margin: 0 0 12px; }
+.rechtstext ul, .rechtstext ol { margin: 0 0 12px; padding-left: 20px; }
+.rechtstext li { margin-bottom: 5px; }
+.rechtstext a { text-decoration: underline; }
+.rechtstext blockquote {
+  margin: 0 0 12px; padding: 12px 14px;
+  border-left: 3px solid currentColor; opacity: 0.85;
+}
+.rechtstext table {
+  width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 13px;
+  display: block; overflow-x: auto;
+}
+.rechtstext th, .rechtstext td {
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  padding: 7px 9px; text-align: left; vertical-align: top;
+}
+.rechtstext th { font-weight: 600; }
