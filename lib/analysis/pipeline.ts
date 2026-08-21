@@ -302,8 +302,14 @@ async function risikoAgent(
       "Schaden, eine Schadensbeseitigung, ein Rückbau, Feuchtespuren, ein ungeschütztes Bauteil. Die " +
       "allgemeine Möglichkeit ('bei Häusern dieses Baujahrs kann immer Feuchte auftreten') reicht " +
       "AUSDRÜCKLICH NICHT und ist mit false zu beantworten.\n" +
-      "- rechtlichUngeklaert: Ist eine Genehmigung, das Baurecht oder der Bestandsschutz offen (z.B. " +
-      "Einliegerwohnung, Umnutzung, Anbau ohne erkennbare Genehmigung)?\n" +
+      "- rechtlichUngeklaert: Ist eine Genehmigung, das Baurecht oder der Bestandsschutz TATSÄCHLICH offen " +
+      "(z.B. Einliegerwohnung, Umnutzung oder Anbau ohne erkennbare Genehmigung)? Diese Angabe stuft die " +
+      "Hypothese automatisch als kaufentscheidend ein, setze sie deshalb nur, wenn wirklich etwas ungeklärt " +
+      "ist. AUSDRÜCKLICH NICHT ungeklärt ist ein Sachverhalt, den das Exposé als genehmigt bezeichnet " +
+      "('baurechtlich genehmigt') oder dessen Genehmigung es unter den vorliegenden Unterlagen aufführt " +
+      "(Baugenehmigung, Bauzeichnungen, Statik). Dass ein Dokument noch nicht selbst eingesehen wurde, macht " +
+      "die Rechtslage nicht ungeklärt – das ist eine normale Prüffrage und gehört in pruefragen, nicht in " +
+      "dieses Flag.\n" +
       "- gesetzlicheFrist: Erzwingt eine gesetzliche Regel (GEG, EU-EPBD) absehbar eine Maßnahme?\n" +
       "- vorOrtKlaerbar: Lässt sich das bei einer normalen Besichtigung klären (true), oder braucht es " +
       "Gutachten, Bauakte, Messung oder eine Behördenauskunft (false)?\n\n" +
@@ -627,10 +633,14 @@ function wendeGesamtPruefungAn(
   report: AnalysisReport,
   pruefung: GesamtPruefungResult,
 ): AnalysisReport {
-  const { ampel, wurdeKorrigiert } = erzwingeAmpelKonsistenz(pruefung.ampel, report.hypothesen);
+  const { ampel, wurdeKorrigiert } = erzwingeAmpelKonsistenz(pruefung.ampel, report.hypothesen, {
+    sanierungsstauMaxEur: report.sanierungsstauMaxEur,
+    angebotspreisEur: report.objektdaten.angebotspreisEur,
+    orientierungswertMaxEur: report.orientierungswertMaxEur,
+  });
   if (wurdeKorrigiert) {
     console.warn(
-      `[HauskaufChecker] Ampel deterministisch auf ROT korrigiert (Gesamt-Prüfung), Modell lieferte "${pruefung.ampel}".`,
+      `[HauskaufChecker] Ampel deterministisch auf ${ampel} korrigiert (Gesamt-Prüfung), Modell lieferte "${pruefung.ampel}".`,
     );
   }
   const finalReport = analysisReportSchema.parse({
@@ -859,7 +869,11 @@ export async function runAnalysisPipeline(analysisId: string): Promise<void> {
         () => syntheseAgent({ objektdaten, marktwert, risiko, finanz }),
         AGENT_RETRY_OPTIONS,
       );
-      const { ampel, wurdeKorrigiert } = erzwingeAmpelKonsistenz(syntheseResult.ampel, hypothesen);
+      const { ampel, wurdeKorrigiert } = erzwingeAmpelKonsistenz(syntheseResult.ampel, hypothesen, {
+        sanierungsstauMaxEur,
+        angebotspreisEur: objektdaten.angebotspreisEur,
+        orientierungswertMaxEur: marktwert.orientierungswertMaxEur,
+      });
       if (wurdeKorrigiert) {
         console.warn(
           `[HauskaufChecker] Ampel deterministisch auf ROT korrigiert bei Analyse ${analysisId} ` +

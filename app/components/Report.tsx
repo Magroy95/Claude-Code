@@ -124,14 +124,18 @@ function Kachel({
   label,
   value,
   tone = "neutral",
+  zusatz,
 }: {
   label: string;
   value: string;
   tone?: Tone;
+  /** Zweite, nachgeordnete Zahl – z.B. der Gesamtansatz inklusive Annahmen. */
+  zusatz?: string;
 }) {
   return (
     <div className={`rpt-kpi tone-${tone}`}>
       <b>{value}</b>
+      {zusatz && <i className="rpt-kpi-zusatz">{zusatz}</i>}
       <span>{label}</span>
     </div>
   );
@@ -303,6 +307,10 @@ export function Report({
   );
   const ohneJahrSummeMin = ohneJahr.reduce((s, g) => s + (g.kostenMinEur ?? 0), 0);
   const ohneJahrSummeMax = ohneJahr.reduce((s, g) => s + (g.kostenMaxEur ?? 0), 0);
+  // Der Teil des Sanierungsstaus, der auf einem belegten Erneuerungsjahr
+  // beruht statt auf der Annahme "seit Baujahr nichts passiert".
+  const belegterStauMin = report.sanierungsstauMinEur - ohneJahrSummeMin;
+  const belegterStauMax = report.sanierungsstauMaxEur - ohneJahrSummeMax;
   const klaerungsfragen = (gewerke ?? [])
     .map((g) => g.klaerungsfrage)
     .filter((f): f is string => typeof f === "string" && f.length > 0);
@@ -376,10 +384,27 @@ export function Report({
           label="Rate + Rücklage / Monat"
           value={`ca. ${formatEur(rateUndRuecklageEur)}`}
         />
+        {/*
+          Zweistufig, weil die eine Zahl in die Irre führt: Ohne
+          Erneuerungsjahre im Exposé wird ab Baujahr gerechnet, und dann
+          steht dort der Vollausbau eines Hauses, bei dem seit dem Bau
+          angeblich nichts passiert ist. Oben deshalb der belegte Teil,
+          darunter der Gesamtansatz – der Abstand zwischen beiden ist genau
+          das, was der Verkäufer mit einer Jahreszahl auflösen kann.
+        */}
         <Kachel
-          label="Geschätzter Sanierungsstau"
-          value={`${formatEur(report.sanierungsstauMinEur)}–${formatEur(report.sanierungsstauMaxEur)}`}
-          tone={sanierungsstauTone(report.sanierungsstauMaxEur, o.angebotspreisEur)}
+          label="Sanierungsstau · belegt"
+          value={
+            belegterStauMax > 0
+              ? `${formatEur(belegterStauMin)}–${formatEur(belegterStauMax)}`
+              : "keine belegten Posten"
+          }
+          zusatz={
+            ohneJahr.length > 0
+              ? `bis ${formatEur(report.sanierungsstauMaxEur)} inkl. Annahmen`
+              : undefined
+          }
+          tone={sanierungsstauTone(belegterStauMax, o.angebotspreisEur)}
         />
       </div>
 

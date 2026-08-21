@@ -11,4 +11,10 @@ export interface StorageAdapter {
   save(input: StoredFileInput): Promise<string>;
   /** Liest eine zuvor gespeicherte Datei anhand ihres storageKey. */
   readBuffer(storageKey: string): Promise<Buffer>;
+  /**
+   * Entfernt eine Datei endgültig. Eine bereits fehlende Datei ist kein
+   * Fehler – das Löschkonzept muss auch dann durchlaufen, wenn eine Datei
+   * schon anderweitig verschwunden ist.
+   */
+  delete(storageKey: string): Promise<void>;
 }

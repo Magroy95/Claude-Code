@@ -143,9 +143,43 @@ function hatUngeklaertenSchadenMitFolgerisiko(hypothesen: Hypothese[]): boolean 
   return hypothesen.some((h) => h.ursacheGeklaert === false && h.folgeschadenMoeglich === true);
 }
 
+// Die Gegenrichtung, und sie ist genauso wichtig.
+//
+// Über 44 Analysen hinweg hat das Modell die Ampel 25-mal auf ROT und 18-mal
+// auf GELB gesetzt – und kein einziges Mal auf GRÜN. Auch bei einem Objekt
+// von 2011 mit Energieklasse B, Wärmepumpe von 2023, belegten Erneuerungen
+// in vier Gewerken, einem Sanierungsstau von 0 EUR und einem Preis innerhalb
+// des Korridors blieb es bei GELB. Die Begründung lautete sinngemäß, es gebe
+// "einzelne klärbare Punkte" – die gibt es bei jeder Immobilie.
+//
+// Eine Ampel mit zwei Farben ist keine Ampel: Wenn nie etwas grün wird,
+// lernt der Nutzer nach dem zweiten Report, dass die Farbe nichts
+// unterscheidet, und entwertet damit auch das begründete Rot. Deshalb wird
+// GRÜN ebenso deterministisch erzwungen wie ROT. Die Bedingungen sind streng
+// – sie beschreiben ein Objekt, bei dem aus den Unterlagen kein
+// kaufentscheidender Punkt und kein nennenswerter Kostenblock erkennbar ist.
+const MAX_SANIERUNGSSTAU_ANTEIL_FUER_GRUEN = 0.05;
+
+export interface AmpelKontext {
+  sanierungsstauMaxEur: number;
+  angebotspreisEur: number;
+  orientierungswertMaxEur: number;
+}
+
+function darfGruenSein(hypothesen: Hypothese[], kontext: AmpelKontext): boolean {
+  if (hypothesen.some((h) => h.risiko === "HOCH")) return false;
+  if (hypothesen.some((h) => h.kategorie === "KAUFENTSCHEIDEND")) return false;
+  if (hypothesen.some((h) => h.ursacheGeklaert === false)) return false;
+  if (kontext.angebotspreisEur <= 0) return false;
+  if (kontext.angebotspreisEur > kontext.orientierungswertMaxEur) return false;
+  const anteil = kontext.sanierungsstauMaxEur / kontext.angebotspreisEur;
+  return anteil <= MAX_SANIERUNGSSTAU_ANTEIL_FUER_GRUEN;
+}
+
 export function erzwingeAmpelKonsistenz(
   ampel: AnalysisReport["ampel"],
   hypothesen: Hypothese[],
+  kontext?: AmpelKontext,
 ): { ampel: AnalysisReport["ampel"]; wurdeKorrigiert: boolean } {
   const anzahlHochRisikoKaufentscheidend = hypothesen.filter(
     (h) => h.kategorie === "KAUFENTSCHEIDEND" && h.risiko === "HOCH",
@@ -153,8 +187,13 @@ export function erzwingeAmpelKonsistenz(
   const rotErzwungen =
     anzahlHochRisikoKaufentscheidend >= MIN_HOCH_RISIKO_KAUFENTSCHEIDEND_FUER_ROT ||
     hatUngeklaertenSchadenMitFolgerisiko(hypothesen);
-  if (rotErzwungen && ampel !== "ROT") {
-    return { ampel: "ROT", wurdeKorrigiert: true };
+  if (rotErzwungen) {
+    return { ampel: "ROT", wurdeKorrigiert: ampel !== "ROT" };
+  }
+  // Ohne Kontext (Altaufrufe) bleibt es beim bisherigen Verhalten: nur ROT
+  // wird erzwungen.
+  if (kontext && darfGruenSein(hypothesen, kontext)) {
+    return { ampel: "GRUEN", wurdeKorrigiert: ampel !== "GRUEN" };
   }
   return { ampel, wurdeKorrigiert: false };
 }

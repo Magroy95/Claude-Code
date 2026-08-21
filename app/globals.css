@@ -175,6 +175,12 @@ body {
   font-family: var(--rpt-mono); font-size: 10px; letter-spacing: 0.05em;
   text-transform: uppercase; color: var(--ink-faint);
 }
+/* Nachgeordnete zweite Zahl: klar lesbar, aber der Hauptzahl untergeordnet. */
+.rpt-kpi-zusatz {
+  display: block; margin: 1px 0 3px;
+  font-family: var(--rpt-mono); font-variant-numeric: tabular-nums;
+  font-size: 11px; font-style: normal; color: var(--ink-faint);
+}
 .rpt-kpi.tone-rot b { color: var(--brick); }
 .rpt-kpi.tone-gelb b { color: var(--ochre); }
 .rpt-kpi.tone-gruen b { color: var(--moss); }

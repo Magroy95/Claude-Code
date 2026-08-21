@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { StorageAdapter, StoredFileInput } from "./types";
@@ -27,5 +27,15 @@ export class LocalStorageAdapter implements StorageAdapter {
       throw new Error("Ungültiger storageKey");
     }
     return readFile(resolved);
+  }
+
+  async delete(storageKey: string): Promise<void> {
+    const resolved = path.join(UPLOADS_DIR, ...storageKey.split("/"));
+    if (!resolved.startsWith(UPLOADS_DIR)) {
+      throw new Error("Ungültiger storageKey");
+    }
+    // force: true lässt eine bereits fehlende Datei durchgehen – für das
+    // Löschkonzept zählt das Ergebnis, nicht der Weg dorthin.
+    await rm(resolved, { force: true });
   }
 }

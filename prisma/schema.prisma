@@ -14,6 +14,19 @@ enum Verkaufsart {
   PRIVAT
 }
 
+enum EntitlementKind {
+  /** Einzelkauf: berechtigt zu genau einer Analyse. */
+  SINGLE
+  /** Paket: beliebig viele Analysen bis validUntil. */
+  PAKET_3M
+}
+
+enum OrderStatus {
+  OFFEN
+  BEZAHLT
+  STORNIERT
+}
+
 enum AnalysisStatus {
   PENDING
   PROCESSING
@@ -27,9 +40,100 @@ enum AttachmentKind {
   BESICHTIGUNG_DOKUMENT
 }
 
+// --- Konto, Anmeldung, Berechtigungen -------------------------------------
+
+model User {
+  id        String   @id @default(uuid())
+  // Kleingeschrieben gespeichert, damit die Anmeldung nicht an der
+  // Schreibweise scheitert.
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  // Zeitpunkt der Löschanforderung. Ab dann ist das Konto gesperrt; der
+  // Löschjob entfernt es endgültig (siehe lib/loeschung.ts).
+  deletedAt DateTime?
+
+  sessions     Session[]
+  magicLinks   MagicLink[]
+  entitlements Entitlement[]
+  orders       Order[]
+  analyses     Analysis[]
+}
+
+// Anmeldung ohne Passwort: Der Nutzer bekommt einen einmaligen Link per
+// E-Mail. Gespeichert wird nur der Hash des Tokens – wer die Datenbank liest,
+// kann sich damit nicht anmelden.
+model MagicLink {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Order {
+  id                    String      @id @default(uuid())
+  userId                String
+  user                  User        @relation(fields: [userId], references: [id])
+  kind                  EntitlementKind
+  // Betrag in Cent, so wie er dem Kunden berechnet wurde.
+  betragCent            Int
+  waehrung              String      @default("eur")
+  status                OrderStatus @default(OFFEN)
+  stripeCheckoutId      String?     @unique
+  stripePaymentIntentId String?
+  createdAt             DateTime    @default(now())
+  bezahltAm             DateTime?
+
+  entitlement Entitlement?
+
+  @@index([userId])
+}
+
+model Entitlement {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      EntitlementKind
+  orderId   String?         @unique
+  order     Order?          @relation(fields: [orderId], references: [id])
+  // Nur bei PAKET_3M gesetzt.
+  validUntil DateTime?
+  // Nur bei SINGLE: die Analyse, für die der Einzelkauf verbraucht wurde.
+  // Solange null, ist der Kauf noch offen und einlösbar.
+  verbrauchtFuerAnalysisId String? @unique
+  createdAt DateTime        @default(now())
+
+  @@index([userId])
+}
+
 // Öffentliche ID hat das Format "HKC-XXXX" und wird in der App (lib/id.ts) erzeugt.
 model Analysis {
   id           String         @id
+  // Analysen ohne Konto sind der kostenlose Teaser; sie werden nach kurzer
+  // Frist gelöscht (siehe Löschkonzept). Meldet sich der Nutzer später an,
+  // wird die Analyse über die E-Mail zugeordnet.
+  userId       String?
+  user         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Gibt der Report den vollständigen Inhalt frei? Der Teaser ist ohne
+  // Freischaltung sichtbar, alles darüber hinaus erst nach Kauf.
+  freigeschaltet Boolean      @default(false)
   email        String
   eigenkapital Int
   verkaufsart  Verkaufsart
@@ -47,6 +151,10 @@ model Analysis {
   attachments Attachment[]
   results     AnalysisResult[]
   answers     HypothesisAnswer[]
+
+  @@index([userId])
+  @@index([email])
+  @@index([createdAt])
 }
 
 model Attachment {
