@@ -242,6 +242,24 @@ function PreiskorridorBar({
   );
 }
 
+// Rangfolge für den kostenlosen Anriss: Kaufentscheidendes zuerst, dann
+// nach Risikostufe. Innerhalb gleicher Einstufung bleibt die Reihenfolge des
+// Reports erhalten – die ist bereits priorisiert.
+const KATEGORIE_RANG: Record<Hypothese["kategorie"], number> = {
+  KAUFENTSCHEIDEND: 0,
+  KOSTENRELEVANT: 1,
+  STRATEGISCH: 2,
+};
+const RISIKO_RANG: Record<Hypothese["risiko"], number> = { HOCH: 0, MITTEL: 1, NIEDRIG: 2 };
+
+function nachWichtigkeit(hypothesen: Hypothese[]): Hypothese[] {
+  return [...hypothesen].sort(
+    (a, b) =>
+      KATEGORIE_RANG[a.kategorie] - KATEGORIE_RANG[b.kategorie] ||
+      RISIKO_RANG[a.risiko] - RISIKO_RANG[b.risiko],
+  );
+}
+
 function HypotheseCard({ h }: { h: Hypothese }) {
   return (
     <div className="hyp-card">
@@ -326,6 +344,11 @@ export function Report({
   // beruht statt auf der Annahme "seit Baujahr nichts passiert".
   const belegterStauMin = report.sanierungsstauMinEur - ohneJahrSummeMin;
   const belegterStauMax = report.sanierungsstauMaxEur - ohneJahrSummeMax;
+  // Zwei Hypothesen bleiben frei. Nicht als Häppchen, sondern vollständig:
+  // Wer eine ganze Karte gelesen hat, weiß, was die übrigen wert sind – ein
+  // angerissener Halbsatz erzeugt Misstrauen statt Neugier.
+  const wichtigste = freigeschaltet ? [] : nachWichtigkeit(report.hypothesen).slice(0, 2);
+  const weitereHypothesen = Math.max(report.hypothesen.length - wichtigste.length, 0);
   const klaerungsfragen = (gewerke ?? [])
     .map((g) => g.klaerungsfrage)
     .filter((f): f is string => typeof f === "string" && f.length > 0);
@@ -376,13 +399,11 @@ export function Report({
         </p>
       </section>
 
-      {/* Kennzahlen, Finanzierungsannahmen und Einschätzung gehören zum
-          kostenpflichtigen Teil: Hier steht der bezifferte Sanierungsstau,
-          die monatliche Belastung und die Marktbewertung – also genau das,
-          wofür gezahlt wird. Die Ampel darüber und die Objektdaten darunter
-          bleiben frei. */}
-      {freigeschaltet && (
-        <>
+      {/* Die Kennzahlen sind bewusst frei: Sie sind der Grund, aus dem
+          jemand weiterlesen will. Wer sieht, dass hier bis zu 195.000 EUR
+          Sanierungsstau stehen, will wissen, woraus die sich zusammensetzen –
+          eine verborgene Zahl weckt dieses Bedürfnis nicht. Die Herleitung
+          dahinter (Gewerke, Hypothesen, Rechenweg) bleibt kostenpflichtig. */}
       <div className="rpt-kennzahlen">
         <Kachel
           label="Angebotspreis"
@@ -407,24 +428,34 @@ export function Report({
           value={`ca. ${formatEur(rateUndRuecklageEur)}`}
         />
         {/*
-          Zweistufig, weil die eine Zahl in die Irre führt: Ohne
-          Erneuerungsjahre im Exposé wird ab Baujahr gerechnet, und dann
-          steht dort der Vollausbau eines Hauses, bei dem seit dem Bau
-          angeblich nichts passiert ist. Oben deshalb der belegte Teil,
-          darunter der Gesamtansatz – der Abstand zwischen beiden ist genau
-          das, was der Verkäufer mit einer Jahreszahl auflösen kann.
+          Zweistufig, weil eine einzelne Zahl in beide Richtungen in die Irre
+          führt.
+
+          Nennt das Exposé Erneuerungsjahre, steht oben der belegte Betrag und
+          darunter der Gesamtansatz – der Abstand ist genau das, was der
+          Verkäufer mit einer Jahreszahl auflösen kann.
+
+          Nennt es KEINE, war hier zunächst "keine belegten Posten" zu lesen.
+          Das ist zwar wörtlich richtig, wird aber als "kein Sanierungsstau"
+          verstanden – bei einem Haus mit sechsstelligem Ansatz das genaue
+          Gegenteil der Aussage. Dann steht deshalb der Gesamtansatz oben und
+          die Herkunft darunter.
         */}
         <Kachel
-          label="Sanierungsstau · belegt"
+          label={belegterStauMax > 0 ? "Sanierungsstau · belegt" : "Sanierungsstau"}
           value={
-            belegterStauMax > 0
-              ? `${formatEur(belegterStauMin)}–${formatEur(belegterStauMax)}`
-              : "keine belegten Posten"
+            report.sanierungsstauMaxEur === 0
+              ? "kein Handlungsbedarf erkennbar"
+              : belegterStauMax > 0
+                ? `${formatEur(belegterStauMin)}–${formatEur(belegterStauMax)}`
+                : `${formatEur(report.sanierungsstauMinEur)}–${formatEur(report.sanierungsstauMaxEur)}`
           }
           zusatz={
-            ohneJahr.length > 0
-              ? `bis ${formatEur(report.sanierungsstauMaxEur)} inkl. Annahmen`
-              : undefined
+            report.sanierungsstauMaxEur === 0
+              ? undefined
+              : belegterStauMax > 0
+                ? `bis ${formatEur(report.sanierungsstauMaxEur)} inkl. Annahmen`
+                : "ab Baujahr gerechnet – kein Erneuerungsjahr im Exposé"
           }
           tone={sanierungsstauTone(report.sanierungsstauMaxEur, o.angebotspreisEur)}
         />
@@ -470,12 +501,15 @@ export function Report({
         </div>
       )}
 
-      <Section title="Einschätzung">
-        <p className="rpt-text">{report.marktEinschaetzung}</p>
-      </Section>
-        </>
+      {/* Die Finanzierungsannahmen darüber bleiben frei: Sie erklären die
+          Monatsrate, die ebenfalls frei steht – eine Zahl ohne ihre
+          Grundlage wäre unseriös. Die Markteinschätzung ist dagegen eine
+          Bewertung und damit Teil der Leistung. */}
+      {freigeschaltet && (
+        <Section title="Einschätzung">
+          <p className="rpt-text">{report.marktEinschaetzung}</p>
+        </Section>
       )}
-
       <Section title="Objektdaten (aus Exposé extrahiert)">
         <dl className="rpt-dl">
           <ObjektdatenZeile label="Lage" value={o.adresseOderLage} />
@@ -506,6 +540,26 @@ export function Report({
         )}
       </Section>
 
+      {!freigeschaltet && wichtigste.length > 0 && (
+        <Section
+          title={
+            wichtigste.length === 1
+              ? "Der wichtigste Punkt vor der Besichtigung"
+              : "Die zwei wichtigsten Punkte vor der Besichtigung"
+          }
+        >
+          <p className="rpt-text" style={{ marginBottom: "16px" }}>
+            Aus {report.hypothesen.length} geprüften Hypothesen — vollständig ausformuliert, mit
+            Beleg aus dem Exposé und den Fragen, die Sie beim Termin stellen sollten.
+          </p>
+          <div className="hyp-liste">
+            {wichtigste.map((h) => (
+              <HypotheseCard key={h.key} h={h} />
+            ))}
+          </div>
+        </Section>
+      )}
+
       {!freigeschaltet && (
         <>
           <Bezahlschranke
@@ -513,6 +567,7 @@ export function Report({
             angemeldet={angemeldet}
             preisEinzel={preisEinzel ?? ""}
             preisPaket={preisPaket ?? ""}
+            weitereHypothesen={weitereHypothesen}
           />
           <footer className="rpt-disclaimer">{DISCLAIMER}</footer>
         </>

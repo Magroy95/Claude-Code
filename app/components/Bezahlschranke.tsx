@@ -15,11 +15,14 @@ export function Bezahlschranke({
   angemeldet,
   preisEinzel,
   preisPaket,
+  weitereHypothesen,
 }: {
   analysisId: string;
   angemeldet: boolean;
   preisEinzel: string;
   preisPaket: string;
+  /** Wie viele Hypothesen über die frei gezeigten hinaus noch folgen. */
+  weitereHypothesen: number;
 }) {
   const [laeuft, setLaeuft] = useState<string | null>(null);
   const [fehler, setFehler] = useState<string | null>(null);
@@ -43,15 +46,21 @@ export function Bezahlschranke({
   return (
     <section className="rpt-schranke no-print">
       <p className="rpt-schranke-label">Kostenlose Kurzfassung endet hier</p>
-      <h2>Der vollständige Report</h2>
+      <h2>
+        {weitereHypothesen > 0
+          ? `${weitereHypothesen} weitere Hypothesen, die Sie klären sollten`
+          : "Der vollständige Report"}
+      </h2>
       <ul className="rpt-schranke-liste">
+        {weitereHypothesen > 0 && (
+          <li>
+            <strong>Alle {weitereHypothesen + 2} Hypothesen</strong> — jede so ausführlich wie die
+            beiden oben, mit Beleg aus dem Exposé und den Fragen für den Termin
+          </li>
+        )}
         <li>
           <strong>Marktwert-Orientierung</strong> — Preiskorridor mit Einordnung des Angebotspreises
           und Verhandlungsargumenten
-        </li>
-        <li>
-          <strong>Hypothesen zur Klärung</strong> — priorisierte Substanz- und Kostenrisiken, jeweils
-          mit Beleg aus dem Exposé und konkreten Prüffragen für die Besichtigung
         </li>
         <li>
           <strong>Gewerke-Checkliste</strong> — alle acht Gewerke einzeln beurteilt, Kostenrahmen aus
