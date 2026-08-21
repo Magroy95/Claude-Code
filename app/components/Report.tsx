@@ -426,7 +426,7 @@ export function Report({
               ? `bis ${formatEur(report.sanierungsstauMaxEur)} inkl. Annahmen`
               : undefined
           }
-          tone={sanierungsstauTone(belegterStauMax, o.angebotspreisEur)}
+          tone={sanierungsstauTone(report.sanierungsstauMaxEur, o.angebotspreisEur)}
         />
       </div>
 
