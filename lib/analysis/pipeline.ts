@@ -47,6 +47,7 @@ import {
 import { holeMarktdaten, type MarktdatenErgebnis } from "./marktdaten";
 import { bewerteHypothesen } from "./risiko";
 import { berechneSanierungsstau, energetischerBedarf } from "./sanierungskosten";
+import { berechneSachwert } from "./sachwert";
 import { sendeAnalyseFehlgeschlagen, sendeAnalyseFertig } from "@/lib/mail";
 import { leiteStatusAb } from "./nutzungsdauer";
 
@@ -220,6 +221,14 @@ async function marktwertAgent(
   verkaufsart: string,
   marktdaten: MarktdatenErgebnis,
 ): Promise<MarktwertAgentResult> {
+  // Sachwertverfahren nach ImmoWertV als zusaetzliche, gerechnete Grundlage.
+  // Liefert null, solange fuer die Region kein Sachwertfaktor hinterlegt ist
+  // - dann bleibt es bei der bisherigen Einordnung, statt mit einem
+  // geratenen Faktor Genauigkeit vorzutaeuschen.
+  const sachwert = berechneSachwert({
+    objektdaten,
+    bodenrichtwertEurProQm: marktdaten.bodenrichtwert?.bodenrichtwertEurProQm ?? null,
+  });
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
     max_tokens: 4096,
@@ -233,7 +242,14 @@ async function marktwertAgent(
       "zahlenbasiert, z.B. konkreter Kostenrahmen oder Preisabschlag). Jedes Argument muss für sich allein " +
       "verständlich sein, ohne die anderen gelesen zu haben.\n\n" +
       "Externe Marktdaten-Referenz für diese Analyse:\n" +
-      marktdatenKontextBlock(marktdaten),
+      marktdatenKontextBlock(marktdaten) +
+      (sachwert
+        ? "\n\nSachwertverfahren nach ImmoWertV, aus amtlichen Kennwerten gerechnet – behandle das " +
+          "als belastbaren Anker für den Korridor, nicht als eine Meinung unter vielen. Weicht deine " +
+          "eigene Einordnung deutlich davon ab, begründe das ausdrücklich im marktwertText:\n" +
+          sachwert.rechenweg.map((z) => `  ${z}`).join("\n") +
+          `\n  → Marktwert nach Sachwertverfahren: ${sachwert.marktwertEur.toLocaleString("de-DE")} EUR`
+        : ""),
     messages: [
       {
         role: "user",

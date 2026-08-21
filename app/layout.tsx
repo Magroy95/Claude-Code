@@ -60,9 +60,16 @@ export default function RootLayout({
             <Link href="/" className="font-semibold tracking-tight">
               HauskaufChecker
             </Link>
-            <nav className="text-sm text-black/60 dark:text-white/60">
+            <nav className="flex items-center gap-5 text-sm text-black/60 dark:text-white/60">
               <Link href="/analyse" className="hover:underline">
                 Analyse abrufen
+              </Link>
+              {/* Ein Link fuer beide Faelle: Wer angemeldet ist, landet im
+                  Konto; wer nicht, auf der Anmeldeseite, die nach dem Login
+                  dorthin weiterleitet. Spart eine Sitzungspruefung im
+                  Layout, das sonst auf jeder Seite dynamisch werden wuerde. */}
+              <Link href="/konto" className="hover:underline">
+                Meine Häuser
               </Link>
             </nav>
           </div>
@@ -76,8 +83,11 @@ export default function RootLayout({
             <Link href="/impressum" className="hover:underline">
               Impressum
             </Link>
-            <Link href="/nutzungsbedingungen" className="hover:underline">
-              Nutzungsbedingungen
+            <Link href="/agb" className="hover:underline">
+              AGB
+            </Link>
+            <Link href="/widerruf" className="hover:underline">
+              Widerruf
             </Link>
           </div>
         </footer>

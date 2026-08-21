@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
   try {
     const { token } = await erstelleMagicLink(email);
-    const link = `${siteConfig.url}/anmelden/bestaetigen?token=${encodeURIComponent(token)}`;
+    const link = `${siteConfig.url}/api/auth/bestaetigen?token=${encodeURIComponent(token)}`;
     await sendeAnmeldelink(email, link);
   } catch (fehler) {
     console.error("[HauskaufChecker] Anmeldelink fehlgeschlagen:", fehler);
