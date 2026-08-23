@@ -27,30 +27,33 @@ export default async function PreiseSeite({
   const uebersicht = nutzer ? await berechtigungsUebersicht(nutzer.id) : null;
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-14">
-      <h1 className="text-2xl font-semibold">Preise</h1>
-      <p className="mt-3 text-sm leading-relaxed opacity-80">
-        Die Kurzfassung mit Ampel, Kurzfazit, Kennzahlen und Objektdaten ist kostenlos und braucht
-        kein Konto. Für die vollständige Besichtigungsmappe zahlen Sie einmalig — es entsteht kein
-        Abonnement.
-      </p>
-      {/* Der Preis steht nie allein. Neben einer sechsstelligen Entscheidung
-          ist ein einstelliger Betrag keine Ausgabe, sondern eine Fußnote –
-          aber das sieht man nur, wenn beides nebeneinander steht. */}
-      <p className="mt-3 text-sm leading-relaxed opacity-80">
-        Für die Begleitung durch einen Bausachverständigen habe ich damals rund{" "}
-        {GUTACHTEN_VERGLEICH_EUR} Euro bezahlt — für ein einziges Haus, und erst, als die
-        Entscheidung schon fast gefallen war. Was hier steht, ist das, was davor kommt.
-      </p>
+    <main className="lp-bahn" style={{ paddingTop: "62px", paddingBottom: "40px", maxWidth: "980px" }}>
+      <div className="lp-kopfzeile">
+        <p className="lp-augenbraue">Preise</p>
+        <h1 className="lp-h2">Was es kostet</h1>
+        <p className="lp-text">
+          Die Kurzfassung mit Ampel, Kurzfazit, Kennzahlen und Objektdaten ist kostenlos und braucht
+          kein Konto. Für die vollständige Besichtigungsmappe zahlen Sie einmalig — es entsteht kein
+          Abonnement.
+        </p>
+        {/* Der Preis steht nie allein. Neben einer sechsstelligen Entscheidung
+            ist ein einstelliger Betrag keine Ausgabe, sondern eine Fußnote –
+            aber das sieht man nur, wenn beides nebeneinander steht. */}
+        <p className="lp-text">
+          Für die Begleitung durch einen Bausachverständigen habe ich damals rund{" "}
+          {GUTACHTEN_VERGLEICH_EUR} Euro bezahlt — für ein einziges Haus, und erst, als die
+          Entscheidung schon fast gefallen war. Was hier steht, ist das, was davor kommt.
+        </p>
+      </div>
 
       {kauf === "abgebrochen" && (
-        <p className="mt-6 rounded border border-current/25 p-3 text-sm">
+        <p className="lp-hinweis">
           Der Bezahlvorgang wurde abgebrochen. Es wurde Ihnen nichts berechnet.
         </p>
       )}
 
       {uebersicht?.paketLaeuftBis && (
-        <p className="mt-6 rounded border border-current/25 p-3 text-sm">
+        <p className="lp-hinweis">
           Ihr Paket läuft noch bis{" "}
           {uebersicht.paketLaeuftBis.toLocaleDateString("de-DE", {
             day: "2-digit",
@@ -61,29 +64,33 @@ export default async function PreiseSeite({
         </p>
       )}
 
-      <div className="mt-10 grid gap-5 sm:grid-cols-2">
-        <section className="rounded border border-current/15 p-5">
-          <h2 className="font-medium">{PRODUKT.SINGLE.bezeichnung}</h2>
-          <p className="mt-1 text-2xl font-semibold">{formatPreis(PRODUKT.SINGLE.betragCent)}</p>
-          <p className="mt-2 text-sm opacity-80">{PRODUKT.SINGLE.beschreibung}</p>
-          <ul className="mt-4 space-y-1.5 text-sm opacity-80">
+      <div className="lp-preise" style={{ marginTop: "34px" }}>
+        <section className="lp-preiskarte">
+          <span className="name">{PRODUKT.SINGLE.bezeichnung}</span>
+          <span className="betrag">
+            {formatPreis(PRODUKT.SINGLE.betragCent)} <small>einmalig</small>
+          </span>
+          <p className="wofuer">{PRODUKT.SINGLE.beschreibung}.</p>
+          <ul>
             <li>Die vollständige Besichtigungsmappe für ein Haus</li>
             <li>PDF für den Besichtigungstermin</li>
             <li>Bleibt dauerhaft in Ihrem Konto</li>
           </ul>
         </section>
 
-        <section className="rounded border-2 border-current/40 p-5">
-          <h2 className="font-medium">{PRODUKT.PAKET_3M.bezeichnung}</h2>
-          <p className="mt-1 text-2xl font-semibold">{formatPreis(PRODUKT.PAKET_3M.betragCent)}</p>
+        <section className="lp-preiskarte hervor">
+          <span className="name">{PRODUKT.PAKET_3M.bezeichnung}</span>
+          <span className="betrag">
+            {formatPreis(PRODUKT.PAKET_3M.betragCent)} <small>{PAKET_LAUFZEIT_TAGE} Tage</small>
+          </span>
           {/* Zweite, leisere Ansprache neben dem Jäger-Bild: Wer gerade jedes
               Wochenende Termine fährt, erkennt sich darin eher wieder als in
               einer Jagd. Das Produkt heißt trotzdem so, wie es heißt. */}
-          <p className="mt-2 text-sm opacity-80">
+          <p className="wofuer">
             {PRODUKT.PAKET_3M.beschreibung}. Wenn Sie gerade jedes Wochenende unterwegs sind, ist
             das der günstigere Weg.
           </p>
-          <ul className="mt-4 space-y-1.5 text-sm opacity-80">
+          <ul>
             <li>Beliebig viele Häuser, {PAKET_LAUFZEIT_TAGE} Tage lang</li>
             <li>Lohnt sich ab dem zweiten Haus</li>
             <li>Endet automatisch, keine Kündigung nötig</li>
@@ -93,7 +100,7 @@ export default async function PreiseSeite({
 
       {/* Einwandbehandlung neben dem Kaufknopf statt in den FAQ: Wer hier
           zögert, scrollt nicht mehr nach unten, um sich beruhigen zu lassen. */}
-      <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-1.5 text-xs opacity-70">
+      <ul className="lp-einwaende" style={{ marginTop: "22px" }}>
         <li>Kein Abonnement</li>
         <li>Sie sehen die Kurzfassung, bevor Sie zahlen</li>
         <li>Anmeldung ohne Passwort</li>
@@ -105,8 +112,8 @@ export default async function PreiseSeite({
           preisPaket={formatPreis(PRODUKT.PAKET_3M.betragCent)}
         />
       ) : (
-        <p className="mt-8 text-sm">
-          <Link href="/anmelden?weiter=%2Fpreise" className="underline">
+        <p className="lp-text" style={{ marginTop: "30px", fontSize: "15.5px" }}>
+          <Link href="/anmelden?weiter=%2Fpreise" className="lp-textlink">
             Anmelden
           </Link>{" "}
           — für den Kauf brauchen wir ein Konto, damit Sie Ihre Häuser später wiederfinden. Ohne
@@ -117,21 +124,21 @@ export default async function PreiseSeite({
       {/* Die Drosselung gehört ins Kleingedruckte, nicht auf die Preiskarte:
           Auf der Karte liest sie sich als Einschränkung des Versprechens,
           hier als das, was sie ist – ein Schutz gegen Automaten. */}
-      <p className="mt-10 text-xs leading-relaxed opacity-70">
+      <p className="lp-klein" style={{ marginTop: "46px", maxWidth: "70ch" }}>
         {PRODUKT.PAKET_3M.bezeichnung} kennt keine Gesamtzahl an Analysen, aber eine technische
         Bremse von {LIMITS.analyseStarten.anzahl} Analysen pro Stunde. Sie verhindert
         automatisierten Missbrauch und fällt bei der Haussuche nicht ins Gewicht.
       </p>
 
-      <p className="mt-4 text-xs leading-relaxed opacity-70">
+      <p className="lp-klein" style={{ marginTop: "14px", maxWidth: "70ch" }}>
         Kein Ausweis von Umsatzsteuer gemäß § 19 UStG (Kleinunternehmerregelung). Mit dem Kauf
         stimmen Sie dem sofortigen Beginn der Leistung zu und nehmen zur Kenntnis, dass Ihr
         Widerrufsrecht mit vollständiger Erbringung erlischt — Einzelheiten in der{" "}
-        <Link href="/widerruf" className="underline">
+        <Link href="/widerruf" className="lp-textlink" style={{ fontSize: "inherit" }}>
           Widerrufsbelehrung
         </Link>{" "}
         und den{" "}
-        <Link href="/agb" className="underline">
+        <Link href="/agb" className="lp-textlink" style={{ fontSize: "inherit" }}>
           AGB
         </Link>
         .

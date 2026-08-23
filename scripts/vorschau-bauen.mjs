@@ -33,11 +33,11 @@ const schritte = [
   {
     nr: "01",
     titel: "Die Startseite",
-    text: `Die Überschrift nennt das Ergebnis, nicht das Werkzeug. Der Gegner im Text ist die Uhr, nicht der Makler. Direkt unter dem Formular stehen die Einwände, die sonst zum Abbruch führen — kostenlos, kein Konto, kein Abo. Weiter unten: was wir <em>nicht</em> können, die Ampel-Einordnung, Ihr Vertrauensabschnitt im Wortlaut, der Gründerabschnitt und die Preise.`,
+    text: `Neben der Überschrift steht kein Versprechen, sondern ein echter Auszug aus dem Beispielreport: Ampel, Preiskorridor mit dem Angebotspreis sichtbar darüber, Sanierungsstau, die drei wichtigsten Punkte. Die Zahlen stammen aus dem verlinkten Report — wer daneben klickt, findet sie dort wieder. Weiter unten: die Methode, was wir <em>nicht</em> können, die Ampel-Einordnung, Ihr Vertrauensabschnitt im Wortlaut, der Gründerabschnitt, die Preise, das Formular und die Fragen.`,
     merken: `Im Gründerabschnitt steht noch <code>[Name der verantwortlichen Person]</code> — der Platzhalter aus der Umgebungsvariable.`,
     datei: "01-start.jpg",
     pfad: "/",
-    hoehe: 6093,
+    hoehe: 6872,
     alt: "Startseite von HauskaufChecker in voller Länge",
   },
   {
@@ -56,7 +56,7 @@ const schritte = [
     merken: `Die zwei Hypothesen sind bewusst ganz zu lesen. Ein angerissener Halbsatz erzeugt Misstrauen, kein Kaufinteresse.`,
     datei: "02-kurzfassung.jpg",
     pfad: "/analyse/HKC-4537-FBRA",
-    hoehe: 3050,
+    hoehe: 3031,
     alt: "Kostenlose Kurzfassung eines Reports mit roter Ampel",
   },
   {
@@ -65,7 +65,7 @@ const schritte = [
     text: `Hier angemeldet gezeigt, deshalb stehen die Kaufknöpfe direkt da. Die Überschrift zählt, was noch kommt („10 weitere Hypothesen, die Sie klären sollten"). Keine verschwommene Vorschau — stattdessen eine Liste dessen, was der Käufer bekommt, und darüber die Zusage, dass er das Ergebnis vor dem Zahlen sieht.`,
     datei: "08-schranke.jpg",
     pfad: "/analyse/HKC-4537-FBRA",
-    hoehe: 3050,
+    hoehe: 3031,
     alt: "Report mit Bezahlschranke und den beiden Kaufknöpfen",
   },
   {
@@ -75,7 +75,7 @@ const schritte = [
     merken: `Die Sanierungsstau-Kachel zeigt jetzt oben den Gesamtansatz (100.000–192.000 €) und darunter, welcher Teil davon belegt ist. Vorher stand die kleinere Zahl groß.`,
     datei: "03-mappe.jpg",
     pfad: "/analyse/HKC-4537-FBRA",
-    hoehe: 14641,
+    hoehe: 14621,
     alt: "Vollständiger Report über die gesamte Länge",
   },
 ];
@@ -86,7 +86,7 @@ const nebenseiten = [
     text: `Beide Produkte mit Ihren Namen und Preisen. Darunter der Vergleich mit den 600 €, die Sie selbst für den Bausachverständigen gezahlt haben — in der ersten Person, weil es Ihre Rechnung ist und keine Marktrecherche. Die Stundenbremse steht im Kleingedruckten, nicht auf der Karte.`,
     datei: "04-preise.jpg",
     pfad: "/preise",
-    hoehe: 1096,
+    hoehe: 1280,
     alt: "Preisseite mit Einzel-Check und Hausjäger-Pass",
   },
   {
@@ -337,15 +337,17 @@ const html = `<title>HauskaufChecker im Nutzerblick</title>
 <header class="kopf">
   <div class="bahn">
     <p class="marke">HauskaufChecker · Stand der Umsetzung</p>
-    <h1>So sieht die Seite gerade aus</h1>
+    <h1>Die Seite im Papier-Design</h1>
     <p class="unterzeile">
-      Alle Bildschirmfotos stammen aus der laufenden Anwendung, nicht aus einem Entwurf. Der Weg
-      unten ist der, den ein Käufer nimmt: von der Startseite bis zur fertigen Mappe.
+      Das Designsystem des Reports gilt jetzt für die ganze Seite: Millimeterpapier, Ziegelrot,
+      Serifentext, Mono-Marginalien. Alle Bildschirmfotos stammen aus der laufenden Anwendung. Der
+      Weg unten ist der, den ein Käufer nimmt — von der Startseite bis zur fertigen Mappe.
     </p>
     <p class="stand">
       <span><b>Aufgenommen</b> 23. August 2026</span>
       <span><b>Branch</b> claude/hauskaufchecker-prototype-setup-nzq51j</span>
       <span><b>Ansicht</b> 1280 px, hell</span>
+      <span><b>Stand</b> Papier-Design</span>
     </p>
   </div>
 </header>
@@ -395,8 +397,8 @@ const html = `<title>HauskaufChecker im Nutzerblick</title>
       </p>
     </div>
     <div class="mobil">
-      ${rahmen({ datei: "m-start.jpg", pfad: "/ · 390 px", hoehe: 7966, alt: "Startseite auf dem Handy" })}
-      ${rahmen({ datei: "m-kurzfassung.jpg", pfad: "/analyse/… · 390 px", hoehe: 4862, alt: "Kurzfassung auf dem Handy" })}
+      ${rahmen({ datei: "m-start.jpg", pfad: "/ · 390 px", hoehe: 10287, alt: "Startseite auf dem Handy" })}
+      ${rahmen({ datei: "m-kurzfassung.jpg", pfad: "/analyse/… · 390 px", hoehe: 4855, alt: "Kurzfassung auf dem Handy" })}
     </div>
   </section>
 

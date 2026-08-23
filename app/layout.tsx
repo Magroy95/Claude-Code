@@ -55,43 +55,38 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <header className="border-b border-black/10 dark:border-white/10">
-          <div className="mx-auto max-w-4xl px-4 py-4 flex items-center justify-between">
-            <Link href="/" className="font-semibold tracking-tight">
+        <header className="lp-kopf no-print">
+          <div className="lp-bahn lp-kopf-reihe">
+            <Link href="/" className="lp-marke">
               HauskaufChecker
             </Link>
-            <nav className="flex items-center gap-5 text-sm text-black/60 dark:text-white/60">
-              <Link href="/preise" className="hover:underline">
-                Preise
-              </Link>
-              <Link href="/analyse" className="hover:underline">
-                Analyse abrufen
-              </Link>
+            <nav className="lp-nav">
+              <Link href="/#methode">Methode</Link>
+              <Link href="/preise">Preise</Link>
+              <Link href="/#fragen">FAQ</Link>
               {/* Ein Link fuer beide Faelle: Wer angemeldet ist, landet im
                   Konto; wer nicht, auf der Anmeldeseite, die nach dem Login
                   dorthin weiterleitet. Spart eine Sitzungspruefung im
                   Layout, das sonst auf jeder Seite dynamisch werden wuerde. */}
-              <Link href="/konto" className="hover:underline">
-                Meine Häuser
-              </Link>
+              <Link href="/konto">Meine Häuser</Link>
             </nav>
+            <Link href="/#start" className="lp-knopf klein" style={{ marginLeft: "auto" }}>
+              Kostenlos starten
+            </Link>
           </div>
         </header>
         <main className="flex-1">{children}</main>
-        <footer className="border-t border-black/10 dark:border-white/10 mt-16">
-          <div className="mx-auto max-w-4xl px-4 py-6 text-xs text-black/50 dark:text-white/50 flex flex-wrap gap-x-6 gap-y-2">
-            <Link href="/datenschutz" className="hover:underline">
-              Datenschutz
-            </Link>
-            <Link href="/impressum" className="hover:underline">
-              Impressum
-            </Link>
-            <Link href="/agb" className="hover:underline">
-              AGB
-            </Link>
-            <Link href="/widerruf" className="hover:underline">
-              Widerruf
-            </Link>
+        <footer className="lp-fuss no-print">
+          <div className="lp-bahn lp-fuss-reihe">
+            <Link href="/datenschutz">Datenschutz</Link>
+            <Link href="/impressum">Impressum</Link>
+            <Link href="/agb">AGB</Link>
+            <Link href="/widerruf">Widerruf</Link>
+            <Link href="/preise">Preise</Link>
+            <Link href="/analyse">Analyse abrufen</Link>
+            <span style={{ marginLeft: "auto" }}>
+              Ersteinschätzung, kein Gutachten
+            </span>
           </div>
         </footer>
       </body>
