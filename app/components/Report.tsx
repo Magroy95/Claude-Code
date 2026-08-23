@@ -452,33 +452,33 @@ export function Report({
           value={`ca. ${formatEur(rateUndRuecklageEur)}`}
         />
         {/*
-          Zweistufig, weil eine einzelne Zahl in beide Richtungen in die Irre
-          führt.
+          Oben steht IMMER der Gesamtansatz, die Herkunft darunter.
 
-          Nennt das Exposé Erneuerungsjahre, steht oben der belegte Betrag und
-          darunter der Gesamtansatz – der Abstand ist genau das, was der
-          Verkäufer mit einer Jahreszahl auflösen kann.
+          Vorher stand oben der belegte Teil, wenn es einen gab, und der
+          Gesamtansatz klein daneben. Das ging so lange gut, wie der belegte
+          Teil der größere war. Am fiktiven Problemhaus kippte es: 8.000–17.000
+          EUR belegt in großer Schrift, "bis 192.000 EUR" in kleiner – wer die
+          Kacheln überfliegt, nimmt die falsche Größenordnung mit, und zwar
+          ausgerechnet bei dem Objekt, bei dem es teuer wird.
 
-          Nennt es KEINE, war hier zunächst "keine belegten Posten" zu lesen.
-          Das ist zwar wörtlich richtig, wird aber als "kein Sanierungsstau"
-          verstanden – bei einem Haus mit sechsstelligem Ansatz das genaue
-          Gegenteil der Aussage. Dann steht deshalb der Gesamtansatz oben und
-          die Herkunft darunter.
+          Genau dieser Fall ist der Normalfall: Je älter das Haus und je dünner
+          das Exposé, desto größer der aus dem Baujahr gerechnete Anteil. Die
+          große Zahl darf deshalb nie die kleinere von beiden sein. Was belegt
+          ist und was gerechnet, sagt der Zusatz – der Abstand bleibt sichtbar,
+          er ist das, was der Verkäufer mit einer Jahreszahl auflösen kann.
         */}
         <Kachel
-          label={belegterStauMax > 0 ? "Sanierungsstau · belegt" : "Sanierungsstau"}
+          label="Sanierungsstau"
           value={
             report.sanierungsstauMaxEur === 0
               ? "kein Handlungsbedarf erkennbar"
-              : belegterStauMax > 0
-                ? `${formatEur(belegterStauMin)}–${formatEur(belegterStauMax)}`
-                : `${formatEur(report.sanierungsstauMinEur)}–${formatEur(report.sanierungsstauMaxEur)}`
+              : `${formatEur(report.sanierungsstauMinEur)}–${formatEur(report.sanierungsstauMaxEur)}`
           }
           zusatz={
             report.sanierungsstauMaxEur === 0
               ? undefined
               : belegterStauMax > 0
-                ? `bis ${formatEur(report.sanierungsstauMaxEur)} inkl. Annahmen`
+                ? `davon ${formatEur(belegterStauMin)}–${formatEur(belegterStauMax)} durch Angaben im Exposé belegt, der Rest ab Baujahr gerechnet`
                 : "ab Baujahr gerechnet – kein Erneuerungsjahr im Exposé"
           }
           tone={sanierungsstauTone(report.sanierungsstauMaxEur, o.angebotspreisEur)}

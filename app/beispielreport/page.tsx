@@ -24,8 +24,13 @@ export default async function BeispielreportSeite() {
       })
     : null;
 
+  // Ziel ist das PDF, nicht die Reportseite: Der Knopf auf der Startseite
+  // sagt "Beispielreport ansehen (PDF)", und ein Versprechen, das schon beim
+  // Klick nicht stimmt, ist ein schlechter Anfang für eine Vertrauensseite.
+  // Das PDF entsteht ohnehin aus genau dieser Reportseite – es ist dasselbe
+  // Dokument, nur in der Form, die zugesagt wurde.
   if (analyse && analyse.status === "DONE" && analyse.userId === null && analyse.freigeschaltet) {
-    redirect(`/analyse/${analyse.id}`);
+    redirect(`/api/analyses/${analyse.id}/pdf`);
   }
 
   return (

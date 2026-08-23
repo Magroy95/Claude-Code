@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { renderPdfFromUrl } from "@/lib/pdf/render";
 import { aktuellerNutzer } from "@/lib/auth/session";
 import { erzeugePdfToken } from "@/lib/pdf/token";
+import { BEISPIEL_ANALYSE_ID } from "@/lib/beispiel";
 
 export async function GET(
   request: Request,
@@ -44,10 +45,28 @@ export async function GET(
   ziel.searchParams.set("pdf", token);
   const pdf = await renderPdfFromUrl(ziel.toString());
 
+  // Der öffentliche Beispielreport wird anders ausgeliefert als ein gekaufter.
+  //
+  // "ansehen" heißt ansehen: inline statt Download, sonst landet der erste
+  // Eindruck als Datei im Ordner "Downloads" statt vor Augen. Und er darf
+  // zwischengespeichert werden – er ändert sich nie, während jeder Aufruf
+  // sonst einen Chromium startet. Auf einer Startseite, die auf diesen Knopf
+  // zeigt, wäre das pro Klick ein Kaltstart.
+  //
+  // Für gekaufte Reports gilt beides ausdrücklich nicht: Sie gehören einem
+  // Nutzer, dürfen nirgendwo zwischengespeichert werden und sollen als Datei
+  // zum Termin mitgehen.
+  const istBeispiel = id === BEISPIEL_ANALYSE_ID;
+
   return new NextResponse(new Uint8Array(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="HauskaufChecker_${id}.pdf"`,
+      "Content-Disposition": istBeispiel
+        ? `inline; filename="HauskaufChecker_Beispielreport.pdf"`
+        : `attachment; filename="HauskaufChecker_${id}.pdf"`,
+      "Cache-Control": istBeispiel
+        ? "public, max-age=3600, s-maxage=86400"
+        : "private, no-store",
     },
   });
 }
