@@ -61,6 +61,9 @@ export default function RootLayout({
               HauskaufChecker
             </Link>
             <nav className="flex items-center gap-5 text-sm text-black/60 dark:text-white/60">
+              <Link href="/preise" className="hover:underline">
+                Preise
+              </Link>
               <Link href="/analyse" className="hover:underline">
                 Analyse abrufen
               </Link>

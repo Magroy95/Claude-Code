@@ -2,6 +2,7 @@ import Link from "next/link";
 import { RechtsSeite } from "@/app/components/RechtsSeite";
 import { ANBIETER, siteConfig } from "@/lib/site-config";
 import { formatPreis, PAKET_LAUFZEIT_TAGE, PRODUKT } from "@/lib/auth/berechtigung";
+import { LIMITS } from "@/lib/ratelimit";
 
 export const metadata = { title: "Allgemeine Geschäftsbedingungen" };
 
@@ -33,7 +34,9 @@ export default function AgbSeite() {
         maschinell erzeugte Ersteinschätzung zu einer Immobilie. Sie umfasst insbesondere eine
         Einordnung des Kaufpreises, Hypothesen zu möglichen Substanz- und Kostenrisiken, eine
         Schätzung des Sanierungsstaus, eine überschlägige Finanzierungsrechnung sowie Prüffragen für
-        die Besichtigung.
+        die Besichtigung. Die vollständige Fassung dieser Ersteinschätzung wird auf der Website und
+        in der Kommunikation des Anbieters auch als &bdquo;Besichtigungsmappe&ldquo; bezeichnet;
+        gemeint ist dieselbe Leistung.
       </p>
       <p>
         <strong>
@@ -78,6 +81,11 @@ export default function AgbSeite() {
       <p>
         Das Paket ist ein einmaliger Kauf mit fester Laufzeit und verlängert sich nicht
         automatisch. Es entsteht kein Abonnement und keine Kündigungsnotwendigkeit.
+      </p>
+      <p>
+        Die Anzahl der Analysen innerhalb der Laufzeit ist nicht begrenzt. Zum Schutz vor
+        automatisiertem Missbrauch gilt jedoch eine technische Obergrenze von{" "}
+        {LIMITS.analyseStarten.anzahl} gestarteten Analysen pro Stunde je Nutzer.
       </p>
       <p>
         Die Zahlungsabwicklung erfolgt über Stripe. Der Anbieter erhebt und speichert keine

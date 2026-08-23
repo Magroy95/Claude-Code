@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DAUER_TYPISCH_MINUTEN } from "@/lib/dauer";
 
 export function StartAnalysisForm() {
   const router = useRouter();
@@ -39,8 +40,11 @@ export function StartAnalysisForm() {
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       <div>
         <label htmlFor="expose" className="block text-sm font-medium mb-1">
-          Exposé hochladen (PDF oder Bild)
+          Ihr Exposé (PDF oder Foto)
         </label>
+        <p className="mb-2 text-xs text-black/55 dark:text-white/55">
+          Ein Screenshot vom Portal reicht auch.
+        </p>
         <input
           id="expose"
           name="expose"
@@ -53,14 +57,18 @@ export function StartAnalysisForm() {
 
       <div>
         <label htmlFor="email" className="block text-sm font-medium mb-1">
-          E-Mail-Adresse
+          Ihre E-Mail-Adresse
         </label>
+        <p className="mb-2 text-xs text-black/55 dark:text-white/55">
+          Damit wir Ihnen den Link schicken können, sobald das Ergebnis da ist. Die Auswertung
+          selbst verschicken wir nie per E-Mail.
+        </p>
         <input
           id="email"
           name="email"
           type="email"
           required
-          placeholder="du@beispiel.de"
+          placeholder="name@beispiel.de"
           className="block w-full rounded-md border border-black/15 dark:border-white/15 bg-transparent px-3 py-2 text-sm"
         />
       </div>
@@ -69,6 +77,12 @@ export function StartAnalysisForm() {
         <label htmlFor="eigenkapital" className="block text-sm font-medium mb-1">
           Verfügbares Eigenkapital (EUR)
         </label>
+        {/* Die Frage nach dem Eigenkapital ist die heikelste im Formular.
+            Ein Satz, der den Zweck nennt, senkt die Abbruchquote an genau
+            dieser Stelle – der Wortlaut ist vom Betreiber vorgegeben. */}
+        <p className="mb-2 text-xs text-black/55 dark:text-white/55">
+          Damit wir Ihre Monatsrate rechnen können
+        </p>
         <input
           id="eigenkapital"
           name="eigenkapital"
@@ -103,7 +117,7 @@ export function StartAnalysisForm() {
 
       <div>
         <label htmlFor="freitext" className="block text-sm font-medium mb-1">
-          Besonderheiten oder bekannte Mängel (optional)
+          Wissen Sie schon etwas, das nicht im Exposé steht? (optional)
         </label>
         <textarea
           id="freitext"
@@ -133,13 +147,22 @@ export function StartAnalysisForm() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {/* Der Knopf nennt das Ergebnis und die Wartezeit, nicht den Vorgang.
+          „Analyse starten" beschreibt, was die Maschine tut; wichtig ist,
+          was der Nutzer davon hat und wie lange es dauert. */}
       <button
         type="submit"
         disabled={submitting}
         className="rounded-md bg-black dark:bg-white text-white dark:text-black px-4 py-2.5 text-sm font-medium disabled:opacity-50"
       >
-        {submitting ? "Wird gestartet…" : "Analyse starten"}
+        {submitting
+          ? "Wird gestartet…"
+          : `Meine Fragen für den Termin — in ${DAUER_TYPISCH_MINUTEN} Minuten`}
       </button>
+      <p className="-mt-3 text-xs text-black/55 dark:text-white/55">
+        Kostenlos und ohne Konto. Sie entscheiden erst nach dem Ergebnis, ob Sie die vollständige
+        Besichtigungsmappe wollen.
+      </p>
     </form>
   );
 }

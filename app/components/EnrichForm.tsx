@@ -66,7 +66,7 @@ export function EnrichForm({
           <textarea
             name={`answer_${h.key}`}
             rows={3}
-            placeholder="Was hast du bei der Besichtigung herausgefunden?"
+            placeholder="Was haben Sie bei der Besichtigung herausgefunden?"
             className="block w-full rounded-md border border-black/15 dark:border-white/15 bg-transparent px-3 py-2 text-sm mb-2"
           />
           <input

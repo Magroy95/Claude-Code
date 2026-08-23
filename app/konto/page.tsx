@@ -71,8 +71,10 @@ export default async function Konto() {
           <h1 className="text-2xl font-semibold">Meine Häuser</h1>
           <p className="mt-1 text-sm opacity-70">{nutzer.email}</p>
         </div>
+        {/* Zielt auf das Formular, nicht auf die Abrufseite: Wer hier klickt,
+            will ein neues Haus prüfen, nicht ein altes wiederfinden. */}
         <Link
-          href="/analyse"
+          href="/#start"
           className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background"
         >
           Neues Haus prüfen
@@ -101,8 +103,12 @@ export default async function Konto() {
           </p>
         ) : (
           <p className="opacity-80">
-            Kein Guthaben. Eine Einzelanalyse kostet {formatPreis(PRODUKT.SINGLE.betragCent)}, das
-            Paket für drei Monate {formatPreis(PRODUKT.PAKET_3M.betragCent)}.
+            Kein Guthaben. {PRODUKT.SINGLE.bezeichnung} kostet{" "}
+            {formatPreis(PRODUKT.SINGLE.betragCent)}, {PRODUKT.PAKET_3M.bezeichnung}{" "}
+            {formatPreis(PRODUKT.PAKET_3M.betragCent)}.{" "}
+            <Link href="/preise" className="underline">
+              Preise ansehen
+            </Link>
           </p>
         )}
       </section>

@@ -104,21 +104,36 @@ function sanierungsstauTone(maxEur: number, angebotspreisEur: number): Tone {
   return "gruen";
 }
 
+/**
+ * Die Ampel wird eingeordnet, bevor sie urteilt.
+ *
+ * Ohne diese Einordnung liest ein Käufer „Rot" als „Finger weg" und wirft
+ * ein Objekt weg, das nach einer Preisverhandlung genau das richtige
+ * gewesen wäre. Die Farbe bewertet nicht das Haus, sondern sagt, wie man in
+ * den Termin gehen sollte – deshalb steht die Handlungsanweisung direkt
+ * neben der Farbe und nicht als Fußnote darunter.
+ */
 const AMPEL_CONFIG: Record<
   AnalysisReport["ampel"],
-  { label: string; modifier: string }
+  { label: string; modifier: string; handlung: string }
 > = {
   GRUEN: {
     label: "Niedriger Klärungs- und Verhandlungsbedarf",
     modifier: "is-gruen",
+    handlung:
+      "Grün heißt: Gehen Sie hin. Wir haben nichts gefunden, das gegen das Objekt spricht. Die Fragen weiter unten sind trotzdem einen Termin wert.",
   },
   GELB: {
     label: "Mittlerer Klärungs- und Verhandlungsbedarf",
     modifier: "is-gelb",
+    handlung:
+      "Gelb heißt: Gehen Sie hin, aber mit Liste. Es gibt offene Punkte, die den Preis verschieben können — klären Sie sie vor dem Angebot, nicht danach.",
   },
   ROT: {
     label: "Hoher Klärungs- und Verhandlungsbedarf",
     modifier: "is-rot",
+    handlung:
+      "Rot heißt nicht: Finger weg. Rot heißt, dass mindestens ein kaufentscheidender Punkt ungeklärt ist. Manchmal löst ein Dokument das auf, manchmal ein Preisnachlass — und manchmal ist es der Grund abzusagen. Das entscheiden Sie, nicht wir.",
   },
 };
 
@@ -363,8 +378,15 @@ export function Report({
   return (
     <article className="report-doc mx-auto max-w-3xl px-6 py-10 print:py-0">
       <header className="rpt-header">
-        <h1>HauskaufChecker</h1>
-        <p className="rpt-sub">Orientierungshilfe zur Vorbereitung auf die Besichtigung</p>
+        {/* Das Dokument heißt so, wie es benutzt wird: Man nimmt es zum
+            Termin mit. „Report" beschreibt das Format, „Besichtigungsmappe"
+            den Zweck – und ein Zweck lässt sich leichter kaufen. */}
+        <h1>{freigeschaltet ? "Ihre Besichtigungsmappe" : "Ihre Kurzfassung"}</h1>
+        <p className="rpt-sub">
+          {freigeschaltet
+            ? "HauskaufChecker · Orientierungshilfe zur Vorbereitung auf die Besichtigung"
+            : "HauskaufChecker · Die wichtigsten Punkte vor der Besichtigung"}
+        </p>
         <p className="rpt-meta">
           {analysisId} ·{" "}
           {createdAt.toLocaleDateString("de-DE", {
@@ -393,6 +415,7 @@ export function Report({
           <span aria-hidden className="rpt-ampel-dot" />
           {ampel.label}
         </div>
+        <p className="rpt-ampel-deutung">{ampel.handlung}</p>
         <p className="rpt-ampel-text">{report.kurzfazit}</p>
         <p className="rpt-ampel-note">
           Die Ampel zeigt den Klärungs- und Verhandlungsbedarf vor einer Entscheidung – keine

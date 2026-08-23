@@ -61,9 +61,9 @@ export default async function AnreichernPage({
         Besichtigungsergebnisse eintragen
       </h1>
       <p className="text-sm text-black/60 dark:text-white/60 mb-8">
-        Beantworte die offenen Fragen aus deiner Analyse ({id}) – so genau wie
-        möglich. Der Report wird anschließend aktualisiert und zeigt, welche
-        Auswirkungen die neuen Informationen haben.
+        Beantworten Sie die offenen Fragen aus Ihrer Analyse ({id}) – so genau wie möglich.
+        Anschließend überarbeiten wir den Report und zeigen Ihnen, was sich durch Ihre neuen
+        Informationen ändert.
       </p>
       <EnrichForm analysisId={id} hypothesen={report.hypothesen} />
     </div>

@@ -13,24 +13,35 @@
 
 import { prisma } from "@/lib/db/prisma";
 
-export const PREIS_EINZEL_CENT = 399;
+export const PREIS_EINZEL_CENT = 799;
 export const PREIS_PAKET_CENT = 5900;
 export const PAKET_LAUFZEIT_TAGE = 90;
 
 export const PRODUKT = {
   SINGLE: {
     kind: "SINGLE" as const,
-    bezeichnung: "Einzelanalyse",
-    beschreibung: "Ein vollständiger Report für ein Haus",
+    bezeichnung: "Der Einzel-Check",
+    beschreibung: "Für das eine Haus, das Sie schon fest im Blick haben",
     betragCent: PREIS_EINZEL_CENT,
   },
   PAKET_3M: {
     kind: "PAKET_3M" as const,
-    bezeichnung: "Paket für 3 Monate",
-    beschreibung: "Beliebig viele Häuser, 3 Monate lang",
+    bezeichnung: "Der Hausjäger-Pass",
+    beschreibung: "Für die aktive Suchphase: so viele Häuser, wie Sie wollen",
     betragCent: PREIS_PAKET_CENT,
   },
 };
+
+/**
+ * Vergleichsgröße für die Einordnung des Preises.
+ *
+ * Keine Marktrecherche, sondern die eigene Rechnung des Gründers für die
+ * Kaufbegleitung durch einen Bausachverständigen. Deshalb steht sie im Text
+ * auch in der ersten Person und nicht als allgemeine Behauptung – eine Zahl,
+ * die man selbst bezahlt hat, darf man nennen; einen Marktdurchschnitt, den
+ * man nicht erhoben hat, nicht.
+ */
+export const GUTACHTEN_VERGLEICH_EUR = 600;
 
 /** Formatiert Cent als Preisangabe. */
 export function formatPreis(cent: number): string {

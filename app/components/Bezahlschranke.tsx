@@ -49,7 +49,7 @@ export function Bezahlschranke({
       <h2>
         {weitereHypothesen > 0
           ? `${weitereHypothesen} weitere Hypothesen, die Sie klären sollten`
-          : "Der vollständige Report"}
+          : "Ihre vollständige Besichtigungsmappe"}
       </h2>
       <ul className="rpt-schranke-liste">
         {weitereHypothesen > 0 && (
@@ -81,11 +81,22 @@ export function Bezahlschranke({
         </li>
       </ul>
 
+      {/* Das Risiko liegt hier tatsächlich bei uns, und das darf man sagen:
+          Gekauft wird ein fertiger Report, den der Nutzer in seiner
+          Kurzfassung schon gesehen hat. Es ist kein Versprechen, das wir
+          später einlösen müssten. */}
+      <p className="rpt-schranke-zusage">
+        Sie sehen das Ergebnis, bevor Sie zahlen. Wäre die Auswertung fehlgeschlagen, stünde hier
+        nichts zum Kaufen — und es wäre Ihnen nichts berechnet worden.
+      </p>
+
       {angemeldet ? (
         <>
           <div className="rpt-schranke-knoepfe">
             <button type="button" onClick={() => kaufen("SINGLE")} disabled={laeuft !== null}>
-              {laeuft === "SINGLE" ? "Einen Moment …" : `Diesen Report freischalten — ${preisEinzel}`}
+              {laeuft === "SINGLE"
+                ? "Einen Moment …"
+                : `Diese Mappe freischalten — ${preisEinzel}`}
             </button>
             <button
               type="button"
