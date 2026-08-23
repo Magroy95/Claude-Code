@@ -52,6 +52,29 @@ import { sendeAnalyseFehlgeschlagen, sendeAnalyseFertig } from "@/lib/mail";
 import { EREIGNIS, halteFest } from "@/lib/ereignisse";
 import { leiteStatusAb } from "./nutzungsdauer";
 
+/**
+ * Obergrenze für die Antwortlänge jedes Agenten.
+ *
+ * Vorher standen hier 4096 bzw. 8192, und das hat sich an einem Objekt mit
+ * vielen Mängeln gerächt: Der Risiko-Agent kam über das Limit, die Antwort
+ * brach mitten in einem JSON-String ab, und der Parser meldete nur
+ * "Unterminated string in JSON at position 15900". Der Retry half nicht –
+ * ein Abbruch am Limit wiederholt sich, er ist kein transienter Fehler. Die
+ * ganze Analyse endete im Status ERROR, obwohl inhaltlich nichts fehlte.
+ *
+ * Ausgerechnet die interessanten Objekte sind davon betroffen: Je mehr ein
+ * Haus zu bemängeln hat, desto länger die Antwort. Ein Limit, das bei
+ * unauffälligen Häusern reicht und bei Problemhäusern reißt, ist deshalb
+ * genau falsch herum kalibriert.
+ *
+ * 16.000 ist der von Anthropic empfohlene Wert für Anfragen ohne Streaming –
+ * hoch genug für lange Antworten, niedrig genug, um unter dem HTTP-Timeout
+ * des SDK zu bleiben. Kosten entstehen dadurch keine: max_tokens ist eine
+ * Obergrenze, keine Reservierung; abgerechnet werden nur die Token, die das
+ * Modell tatsächlich erzeugt.
+ */
+const AGENT_MAX_TOKENS = 16000;
+
 const DISCLAIMER_HINWEIS =
   "Alle Angaben sind unverbindliche, KI-gestützte Hypothesen auf Basis der bereitgestellten Unterlagen. " +
   "Sie ersetzen keine Prüfung durch einen Bausachverständigen und keine Rechts- oder Finanzberatung.";
@@ -135,7 +158,7 @@ async function extraktionAgent(
 ): Promise<Objektdaten> {
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
-    max_tokens: 4096,
+    max_tokens: AGENT_MAX_TOKENS,
     system:
       "Du bist ein Immobilien-Analyst. Extrahiere die Objektdaten aus dem beigefügten Exposé so präzise wie möglich. " +
       "Wenn ein Wert nicht im Dokument steht, setze ihn auf null statt zu raten.\n\n" +
@@ -232,7 +255,7 @@ async function marktwertAgent(
   });
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
-    max_tokens: 4096,
+    max_tokens: AGENT_MAX_TOKENS,
     system:
       PERSONA_PREAMBLE +
       "\n\nDu bist in diesem Schritt der Investor: Ordne den Angebotspreis anhand der Objektdaten ein " +
@@ -292,7 +315,7 @@ async function risikoAgent(
 ): Promise<RisikoAgentResult> {
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
-    max_tokens: 8192,
+    max_tokens: AGENT_MAX_TOKENS,
     system:
       PERSONA_PREAMBLE +
       "\n\nDu bist in diesem Schritt der Bausachverständige (Ersteinschätzung auf Basis von Exposé-Daten, keine " +
@@ -395,7 +418,7 @@ async function finanzAgent(
 ): Promise<FinanzAgentResult> {
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
-    max_tokens: 4096,
+    max_tokens: AGENT_MAX_TOKENS,
     system:
       PERSONA_PREAMBLE +
       "\n\nDu bist in diesem Schritt der Investor mit Fokus auf Finanzierung. Die monatliche Annuität, die " +
@@ -453,7 +476,7 @@ async function syntheseAgent(input: {
 }) {
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
-    max_tokens: 8192,
+    max_tokens: AGENT_MAX_TOKENS,
     system:
       PERSONA_PREAMBLE +
       "\n\nDu fasst die Ersteinschätzung aus allen drei Perspektiven zusammen. Formuliere drei Argumente für und " +
@@ -530,7 +553,7 @@ async function sanierungsfahrplanPruefungAgent(
 ) {
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
-    max_tokens: 8192,
+    max_tokens: AGENT_MAX_TOKENS,
     system:
       PERSONA_PREAMBLE +
       "\n\nDu bist in diesem Schritt eine ZWEITE, unabhängige Prüfinstanz (Vier-Augen-Prinzip) für einen " +
@@ -589,7 +612,7 @@ async function sanierungsfahrplanPruefungAgent(
 async function gesamtPruefungAgent(report: AnalysisReport): Promise<GesamtPruefungResult> {
   const message = await anthropic.messages.parse({
     model: ANALYSIS_MODEL,
-    max_tokens: 8192,
+    max_tokens: AGENT_MAX_TOKENS,
     system:
       PERSONA_PREAMBLE +
       "\n\nDu bist die abschließende, unabhängige Vier-Augen-Prüfung für den GESAMTEN Report. Du hast keinen der " +
@@ -1090,9 +1113,7 @@ export async function runImpactPipeline(analysisId: string): Promise<void> {
 
     const message = await anthropic.messages.parse({
       model: ANALYSIS_MODEL,
-      // Muss den kompletten Report (alle Felder) erneut ausgeben, deshalb
-      // deutlich mehr Headroom als die übrigen Agenten-Schritte.
-      max_tokens: 16000,
+      max_tokens: AGENT_MAX_TOKENS,
       system:
         PERSONA_PREAMBLE +
         "\n\nDu aktualisierst eine bestehende Immobilien-Ersteinschätzung mit neuen Informationen aus der " +
