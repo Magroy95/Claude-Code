@@ -1,0 +1,180 @@
+<!doctype html>
+<!--
+  Fiktives Musterexposé für den öffentlichen Beispielreport.
+
+  Warum ein erfundenes Objekt: Ein Report nennt Adresse, Kaufpreis und
+  vermutete Mängel. Zu einem real inserierten Haus wäre das öffentlich nicht
+  vertretbar – gegenüber Eigentümer und Verkäufer nicht und rechtlich auch
+  nicht. Deshalb ist hier alles erfunden bis auf die Gemeinde: Ritterhude
+  steht drin, weil nur so der amtliche Bodenrichtwert greift und der
+  Beispielreport eine echte Marktwert-Verankerung zeigen kann.
+
+  Die Straße ("Musterweg") existiert nicht, der Makler existiert nicht, die
+  Personen existieren nicht. Der Hinweis darauf steht auf jeder Seite.
+
+  Das Objekt ist bewusst als Problemhaus gebaut: Baujahr 1968, Ölheizung von
+  1998, Energieklasse H, ein nicht abschließend geklärter Feuchteschaden im
+  Keller, Asbestverdacht, ein Anbau ohne erwähnte Genehmigung und ein Preis
+  über dem, was Lage und Zustand hergeben. Ein Musterhaus ohne Mängel wäre
+  als Beispiel wertlos – man sieht daran nicht, was das Produkt kann.
+-->
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @page { size: A4; margin: 14mm 15mm; }
+      * { box-sizing: border-box; }
+      body {
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-size: 10.5pt; line-height: 1.5; color: #1c1c1c; margin: 0;
+      }
+      .fiktiv {
+        background: #7a1f1f; color: #fff; padding: 7px 12px;
+        font-size: 9pt; font-weight: 700; letter-spacing: 0.08em;
+        text-transform: uppercase; text-align: center; margin-bottom: 16px;
+      }
+      .kopf { border-bottom: 2px solid #1c1c1c; padding-bottom: 10px; margin-bottom: 16px; }
+      .makler { font-size: 9pt; letter-spacing: 0.12em; text-transform: uppercase; color: #666; }
+      h1 { font-size: 18pt; margin: 6px 0 2px; }
+      .lage { font-size: 11pt; color: #444; margin: 0; }
+      .preis { font-size: 16pt; font-weight: 700; margin-top: 10px; }
+      .preis span { font-size: 9.5pt; font-weight: 400; color: #666; }
+      h2 {
+        font-size: 11pt; text-transform: uppercase; letter-spacing: 0.06em;
+        border-bottom: 1px solid #ccc; padding-bottom: 3px; margin: 20px 0 8px;
+      }
+      table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+      td { padding: 3.5px 0; vertical-align: top; border-bottom: 1px solid #eee; }
+      td.k { color: #666; width: 42%; }
+      td.v { font-weight: 600; }
+      .zwei { display: flex; gap: 26px; }
+      .zwei > div { flex: 1; }
+      p { margin: 0 0 8px; }
+      ul { margin: 0 0 8px; padding-left: 16px; }
+      li { margin-bottom: 3px; }
+      .fuss { margin-top: 22px; padding-top: 8px; border-top: 1px solid #ccc; font-size: 8.5pt; color: #666; }
+      .seitenumbruch { page-break-before: always; }
+    </style>
+  </head>
+  <body>
+    <div class="fiktiv">Fiktives Musterexposé · Kein reales Angebot · Erfundene Adresse und Daten</div>
+
+    <div class="kopf">
+      <p class="makler">Musterhaus Immobilien (fiktiv)</p>
+      <h1>Freistehendes Einfamilienhaus mit großem Grundstück</h1>
+      <p class="lage">Musterweg 12, 27721 Ritterhude</p>
+      <p class="preis">429.000 € <span>zzgl. 3,57 % Käuferprovision inkl. MwSt.</span></p>
+    </div>
+
+    <div class="zwei">
+      <div>
+        <h2>Eckdaten</h2>
+        <table>
+          <tr><td class="k">Objektart</td><td class="v">Einfamilienhaus, freistehend</td></tr>
+          <tr><td class="k">Baujahr</td><td class="v">1968</td></tr>
+          <tr><td class="k">Wohnfläche</td><td class="v">142 m²</td></tr>
+          <tr><td class="k">Nutzfläche (Souterrain)</td><td class="v">48 m²</td></tr>
+          <tr><td class="k">Grundstück</td><td class="v">620 m²</td></tr>
+          <tr><td class="k">Zimmer</td><td class="v">5</td></tr>
+          <tr><td class="k">Badezimmer</td><td class="v">1 (zzgl. Gäste-WC)</td></tr>
+          <tr><td class="k">Etagen</td><td class="v">2 zzgl. Souterrain</td></tr>
+          <tr><td class="k">Keller</td><td class="v">vollunterkellert</td></tr>
+          <tr><td class="k">Stellplatz</td><td class="v">Garage (Baujahr 1968) und Carport</td></tr>
+          <tr><td class="k">Bezugsfrei</td><td class="v">nach Vereinbarung</td></tr>
+        </table>
+      </div>
+      <div>
+        <h2>Energie</h2>
+        <table>
+          <tr><td class="k">Energieausweis</td><td class="v">Bedarfsausweis</td></tr>
+          <tr><td class="k">Endenergiebedarf</td><td class="v">268,4 kWh/(m²·a)</td></tr>
+          <tr><td class="k">Energieeffizienzklasse</td><td class="v">H</td></tr>
+          <tr><td class="k">Gültig bis</td><td class="v">03/2032</td></tr>
+          <tr><td class="k">Heizungsart</td><td class="v">Zentralheizung</td></tr>
+          <tr><td class="k">Energieträger</td><td class="v">Öl</td></tr>
+          <tr><td class="k">Baujahr Heizkessel</td><td class="v">1998</td></tr>
+          <tr><td class="k">Öltank</td><td class="v">2 × 2.000 l im Souterrain</td></tr>
+          <tr><td class="k">Warmwasser</td><td class="v">über Heizung</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <h2>Objektbeschreibung</h2>
+    <p>
+      Dieses solide gebaute Einfamilienhaus aus dem Jahr 1968 liegt in einer ruhigen Wohnstraße von
+      Ritterhude. Das großzügige Grundstück von 620 m² mit altem Baumbestand bietet viel Raum für
+      Familien mit Kindern. Die Räume sind hell geschnitten, das Wohnzimmer öffnet sich zum 2009
+      angebauten Wintergarten mit direktem Zugang in den Garten.
+    </p>
+    <p>
+      Das Haus wurde von der Familie über Jahrzehnte gepflegt und in Teilen modernisiert. Es befindet
+      sich in einem <strong>gepflegten, aber renovierungsbedürftigen Zustand</strong> und bietet dem
+      neuen Eigentümer die Möglichkeit, es nach eigenen Vorstellungen zu gestalten. Der Kaufpreis
+      berücksichtigt den anstehenden Renovierungsbedarf.
+    </p>
+
+    <h2>Ausstattung und bisherige Maßnahmen</h2>
+    <ul>
+      <li>Dacheindeckung im Originalzustand von 1968; nach dem Sturm im Winter 2023 wurden einzelne
+        verschobene Dachpfannen provisorisch neu verlegt, eine abschließende Reparatur steht noch aus</li>
+      <li>Fenster 1994 auf Kunststoff mit Zweifach-Isolierverglasung umgerüstet, Rollläden funktionsfähig</li>
+      <li>Elektroinstallation in Teilen erneuert; im Souterrain und in der Garage befindet sich noch
+        die ursprüngliche Installation</li>
+      <li>Badezimmer 1989 modernisiert, Gäste-WC im Erdgeschoss 2011 erneuert</li>
+      <li>Wintergarten 2009 an der Südseite angebaut, unbeheizt</li>
+      <li>Fassade unverputzt, Verblendmauerwerk im Originalzustand, keine Außendämmung vorhanden</li>
+      <li>Bodenbeläge im Souterrain aus der Bauzeit der 1970er Jahre (Kunststoffplatten, teils
+        aufgeschüsselt)</li>
+      <li>Gartenhaus mit Eternit-Wellplatten als Dacheindeckung</li>
+      <li>Kaminanschluss im Wohnzimmer vorhanden, Kaminofen wird nicht mitverkauft</li>
+    </ul>
+
+    <h2>Hinweise des Verkäufers</h2>
+    <p>
+      Nach dem Starkregen im Sommer 2024 zeigte sich an der Kellerwand zum Garten hin eine feuchte
+      Stelle. Die Ursache konnte bislang nicht abschließend geklärt werden; ein Fachbetrieb war zur
+      Besichtigung vor Ort, ein schriftliches Gutachten liegt nicht vor. Die betroffene Wand wurde
+      anschließend neu gestrichen. Seither wurde keine erneute Feuchtigkeit festgestellt.
+    </p>
+    <p>
+      Das Grundstück ist mit einem Wegerecht zugunsten des rückwärtig gelegenen Nachbargrundstücks
+      belastet (Abteilung II des Grundbuchs). Der Zufahrtsweg an der westlichen Grundstücksgrenze wird
+      vom Nachbarn mitgenutzt.
+    </p>
+    <p>
+      Die Immobilie wird wie besichtigt und unter Ausschluss jeglicher Gewährleistung für Sachmängel
+      verkauft. Unterlagen zu Baugenehmigungen liegen dem Anbieter nicht vollständig vor und können
+      beim Bauamt eingesehen werden.
+    </p>
+
+    <h2>Lage</h2>
+    <p>
+      Ritterhude liegt nördlich von Bremen im Landkreis Osterholz. Grundschule, Kindergarten und
+      Nahversorgung sind in wenigen Minuten erreichbar, der Bahnhof Ritterhude mit Anbindung nach
+      Bremen Hauptbahnhof liegt etwa 1,5 km entfernt. Die Umgebung ist von Einfamilienhäusern aus den
+      1960er- und 1970er-Jahren geprägt.
+    </p>
+
+    <h2>Kosten und Konditionen</h2>
+    <table>
+      <tr><td class="k">Kaufpreis</td><td class="v">429.000 €</td></tr>
+      <tr><td class="k">Käuferprovision</td><td class="v">3,57 % inkl. gesetzlicher MwSt.</td></tr>
+      <tr><td class="k">Grunderwerbsteuer Niedersachsen</td><td class="v">5,0 %</td></tr>
+      <tr><td class="k">Notar und Grundbuch</td><td class="v">ca. 2,0 %, trägt der Käufer</td></tr>
+      <tr><td class="k">Grundsteuer</td><td class="v">wird nach Eigentumsübergang neu festgesetzt</td></tr>
+      <tr><td class="k">Verkaufsart</td><td class="v">Maklerverkauf</td></tr>
+    </table>
+
+    <h2>Kontakt</h2>
+    <p>
+      Musterhaus Immobilien (fiktiv)<br />
+      Beispielstraße 1, 27711 Osterholz-Scharmbeck<br />
+      Diese Kontaktdaten sind erfunden und gehören zu keinem realen Unternehmen.
+    </p>
+
+    <div class="fiktiv" style="margin-top: 18px">
+      Fiktives Musterexposé zu Demonstrationszwecken · Objekt, Adresse, Anbieter und alle Angaben
+      sind erfunden · Kein Angebot
+    </div>
+  </body>
+</html>

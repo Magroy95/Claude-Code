@@ -25,6 +25,7 @@
 
 import { prisma } from "@/lib/db/prisma";
 import { storage } from "@/lib/storage";
+import { BEISPIEL_ANALYSE_ID } from "@/lib/beispiel";
 
 export const FRIST_EXPOSE_TAGE = 90;
 export const FRIST_TEASER_TAGE = 14;
@@ -79,8 +80,16 @@ async function loescheAlteExposes(bericht: LoeschBericht): Promise<void> {
  * gibt es keinen Grund, sie zu behalten.
  */
 async function loescheTeaser(bericht: LoeschBericht): Promise<void> {
+  // Der öffentliche Beispielreport ist technisch ein Teaser: keine
+  // Zuordnung zu einem Konto, nur freigeschaltet. Ohne diese Ausnahme
+  // würde der Job ihn nach der Frist wegräumen und das Versprechen auf der
+  // Startseite ins Leere laufen lassen.
   const alt = await prisma.analysis.findMany({
-    where: { userId: null, createdAt: { lt: vorTagen(FRIST_TEASER_TAGE) } },
+    where: {
+      userId: null,
+      createdAt: { lt: vorTagen(FRIST_TEASER_TAGE) },
+      ...(BEISPIEL_ANALYSE_ID ? { id: { not: BEISPIEL_ANALYSE_ID } } : {}),
+    },
     select: { id: true, attachments: { select: { storageKey: true } } },
   });
   for (const analyse of alt) {
