@@ -81,7 +81,11 @@ export default async function Konto() {
         </Link>
       </header>
 
-      {/* Guthaben zuerst: Wer etwas gekauft hat, will sehen, dass es da ist. */}
+      {/* Guthaben zuerst: Wer etwas gekauft hat, will sehen, dass es da ist.
+
+          Die Produktnamen beginnen mit "Der". Im Fliesstext aneinandergereiht
+          ergibt das mitten im Satz ein grossgeschriebenes "Der", deshalb steht
+          der leere Fall unten als Aufzaehlung mit Doppelpunkt. */}
       <section className="mt-8 rounded border border-current/15 p-4 text-sm">
         {uebersicht.paketLaeuftBis ? (
           <p>
@@ -103,8 +107,8 @@ export default async function Konto() {
           </p>
         ) : (
           <p className="opacity-80">
-            Kein Guthaben. {PRODUKT.SINGLE.bezeichnung} kostet{" "}
-            {formatPreis(PRODUKT.SINGLE.betragCent)}, {PRODUKT.PAKET_3M.bezeichnung}{" "}
+            Kein Guthaben. {PRODUKT.SINGLE.bezeichnung}:{" "}
+            {formatPreis(PRODUKT.SINGLE.betragCent)} · {PRODUKT.PAKET_3M.bezeichnung}:{" "}
             {formatPreis(PRODUKT.PAKET_3M.betragCent)}.{" "}
             <Link href="/preise" className="underline">
               Preise ansehen
