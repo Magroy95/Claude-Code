@@ -30,24 +30,26 @@ export default async function AuswertungSeite({
   const gesamt = rueckmeldung.hilfreich + rueckmeldung.nicht;
 
   return (
-    <main className="mx-auto max-w-2xl px-6 py-14">
-      <h1 className="text-2xl font-semibold">Auswertung</h1>
-      <p className="mt-1 text-sm opacity-70">Letzte {zeitraum} Tage</p>
+    <div className="lp-bahn mittel lp-seite">
+      <p className="lp-augenbraue">Letzte {zeitraum} Tage</p>
+      <h1 className="lp-h2" style={{ marginBottom: "34px" }}>
+        Auswertung
+      </h1>
 
-      <table className="mt-8 w-full border-collapse text-sm">
+      <table className="lp-tabelle">
         <thead>
-          <tr className="border-b border-current/20 text-left">
-            <th className="py-2 font-medium">Schritt</th>
-            <th className="py-2 text-right font-medium">Anzahl</th>
-            <th className="py-2 text-right font-medium">davon weiter</th>
+          <tr>
+            <th>Schritt</th>
+            <th className="zahl">Anzahl</th>
+            <th className="zahl">davon weiter</th>
           </tr>
         </thead>
-        <tbody className="tabular-nums">
+        <tbody>
           {trichter.map((stufe) => (
-            <tr key={stufe.name} className="border-b border-current/10">
-              <td className="py-2">{stufe.name}</td>
-              <td className="py-2 text-right">{stufe.anzahl}</td>
-              <td className="py-2 text-right opacity-70">
+            <tr key={stufe.name}>
+              <td>{stufe.name}</td>
+              <td className="zahl">{stufe.anzahl}</td>
+              <td className="zahl leise">
                 {stufe.anteilVorstufe === null ? "—" : `${stufe.anteilVorstufe} %`}
               </td>
             </tr>
@@ -55,21 +57,23 @@ export default async function AuswertungSeite({
         </tbody>
       </table>
 
-      <h2 className="mt-10 text-lg font-medium">War der Report hilfreich?</h2>
+      <h2 className="lp-h3" style={{ marginTop: "42px" }}>
+        War der Report hilfreich?
+      </h2>
       {gesamt === 0 ? (
-        <p className="mt-2 text-sm opacity-70">Noch keine Rückmeldungen.</p>
+        <p className="lp-text">Noch keine Rückmeldungen.</p>
       ) : (
-        <p className="mt-2 text-sm tabular-nums">
+        <p className="lp-text" style={{ fontVariantNumeric: "tabular-nums" }}>
           {rueckmeldung.hilfreich} von {gesamt} sagen ja (
           {Math.round((rueckmeldung.hilfreich / gesamt) * 100)} %).
         </p>
       )}
 
-      <p className="mt-10 text-xs leading-relaxed opacity-60">
+      <p className="lp-klein" style={{ marginTop: "44px", maxWidth: "70ch" }}>
         Gezählt werden ausschließlich Ereignisnamen und, wo vorhanden, die Analyse-ID. Keine
         IP-Adressen, keine Browserkennungen, keine Wiedererkennung über Besuche hinweg — deshalb
         braucht die Seite weder Einwilligung noch Cookie-Banner.
       </p>
-    </main>
+    </div>
   );
 }

@@ -18,20 +18,21 @@ export default async function AnmeldenSeite({
   const { fehler, weiter } = await searchParams;
 
   return (
-    <main className="mx-auto max-w-md px-6 py-20">
-      <h1 className="text-2xl font-semibold">Anmelden</h1>
+    <div className="lp-bahn schmal lp-seite">
+      <p className="lp-augenbraue">Ihr Konto</p>
+      <h1 className="lp-h2">Anmelden</h1>
+      <p className="lp-text">
+        Wir schicken Ihnen einen Anmeldelink per E-Mail — ohne Passwort. Haben Sie noch kein Konto,
+        wird es dabei angelegt.
+      </p>
       {fehler === "link" && (
-        <p className="mt-4 rounded border border-current/25 p-3 text-sm leading-relaxed">
+        <p className="lp-warnung" style={{ marginTop: "22px" }}>
           Dieser Anmeldelink gilt nicht mehr. Links sind 20 Minuten gültig und lassen sich nur
           einmal verwenden — das schützt Ihr Konto, falls die E-Mail in falsche Hände gerät.
           Fordern Sie einfach einen neuen an.
         </p>
       )}
-      <p className="mt-3 text-sm leading-relaxed opacity-80">
-        Wir schicken Ihnen einen Anmeldelink per E-Mail — ohne Passwort. Haben Sie noch kein Konto,
-        wird es dabei angelegt.
-      </p>
       <AnmeldeForm weiter={weiter} />
-    </main>
+    </div>
   );
 }

@@ -24,16 +24,17 @@ export function AnmeldeForm({ weiter }: { weiter?: string }) {
 
   if (status === "gesendet") {
     return (
-      <div className="mt-8 rounded border border-current/20 p-5">
-        <p className="font-medium">Schauen Sie in Ihr Postfach</p>
-        <p className="mt-2 text-sm leading-relaxed opacity-80">
+      <div className="lp-tafel" style={{ marginTop: "30px" }}>
+        <h2 className="lp-h3">Schauen Sie in Ihr Postfach</h2>
+        <p className="lp-text" style={{ fontSize: "15.5px" }}>
           Wenn zu dieser Adresse ein Konto besteht oder angelegt werden kann, ist der Anmeldelink
           unterwegs. Er gilt 20 Minuten.
         </p>
         <button
           type="button"
           onClick={() => setStatus("bereit")}
-          className="mt-4 text-sm underline"
+          className="lp-textlink"
+          style={{ marginTop: "18px" }}
         >
           Andere Adresse verwenden
         </button>
@@ -42,26 +43,21 @@ export function AnmeldeForm({ weiter }: { weiter?: string }) {
   }
 
   return (
-    <form onSubmit={absenden} className="mt-8 flex flex-col gap-3">
-      <label htmlFor="email" className="text-sm font-medium">
-        E-Mail-Adresse
-      </label>
-      <input
-        id="email"
-        name="email"
-        type="email"
-        required
-        autoComplete="email"
-        autoFocus
-        placeholder="ihre@adresse.de"
-        className="rounded border border-current/25 bg-transparent px-3 py-2 text-base"
-      />
-      {fehler && <p className="text-sm text-red-600">{fehler}</p>}
-      <button
-        type="submit"
-        disabled={status === "sendet"}
-        className="mt-1 rounded bg-foreground px-4 py-2.5 font-medium text-background disabled:opacity-60"
-      >
+    <form onSubmit={absenden} className="lp-formular" style={{ marginTop: "30px" }}>
+      <div className="lp-feld">
+        <label htmlFor="email">E-Mail-Adresse</label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          required
+          autoComplete="email"
+          autoFocus
+          placeholder="ihre@adresse.de"
+        />
+      </div>
+      {fehler && <p className="lp-fehler">{fehler}</p>}
+      <button type="submit" className="lp-knopf" disabled={status === "sendet"}>
         {status === "sendet" ? "Wird gesendet …" : "Anmeldelink schicken"}
       </button>
     </form>

@@ -46,19 +46,14 @@ export function EnrichForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+    <form onSubmit={handleSubmit} className="lp-formular">
       {hypothesen.map((h) => (
-        <div
-          key={h.key}
-          className="rounded-lg border border-black/10 dark:border-white/15 p-4"
-        >
-          <div className="text-xs uppercase tracking-wide text-black/50 dark:text-white/50 mb-1">
-            {KATEGORIE_LABEL[h.kategorie]}
-          </div>
-          <div className="font-medium mb-2">
+        <div key={h.key} className="lp-hypokarte">
+          <p className="kategorie">{KATEGORIE_LABEL[h.kategorie]}</p>
+          <p className="titel">
             {h.key} · {h.titel}
-          </div>
-          <ul className="text-sm list-disc pl-5 mb-3 text-black/70 dark:text-white/70">
+          </p>
+          <ul className="fragen">
             {h.pruefragen.map((frage, i) => (
               <li key={i}>{frage}</li>
             ))}
@@ -67,25 +62,21 @@ export function EnrichForm({
             name={`answer_${h.key}`}
             rows={3}
             placeholder="Was haben Sie bei der Besichtigung herausgefunden?"
-            className="block w-full rounded-md border border-black/15 dark:border-white/15 bg-transparent px-3 py-2 text-sm mb-2"
+            aria-label={`Antwort zu ${h.key}`}
           />
           <input
             type="file"
             name={`files_${h.key}`}
             multiple
             accept="image/*,application/pdf"
-            className="block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-black/5 dark:file:bg-white/10 file:px-3 file:py-1.5"
+            aria-label={`Belege zu ${h.key}`}
           />
         </div>
       ))}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="lp-fehler">{error}</p>}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="rounded-md bg-black dark:bg-white text-white dark:text-black px-4 py-2.5 text-sm font-medium disabled:opacity-50"
-      >
+      <button type="submit" className="lp-knopf" disabled={submitting}>
         {submitting ? "Wird aktualisiert…" : "Antworten speichern und Report aktualisieren"}
       </button>
     </form>

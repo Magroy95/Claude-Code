@@ -31,9 +31,9 @@ export default async function AnreichernPage({
 
   if (analysis.results.length === 0) {
     return (
-      <div className="mx-auto max-w-md px-4 py-24 text-center">
-        <h1 className="text-lg font-medium mb-2">Noch nicht bereit</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
+      <div className="lp-bahn schmal lp-seite mittig">
+        <h1 className="lp-h2">Noch nicht bereit</h1>
+        <p className="lp-text">
           Diese Analyse ist aktuell nicht abgeschlossen und kann noch nicht
           angereichert werden.
         </p>
@@ -43,9 +43,9 @@ export default async function AnreichernPage({
 
   if (analysis.status === "PENDING" || analysis.status === "PROCESSING") {
     return (
-      <div className="mx-auto max-w-md px-4 py-24 text-center">
-        <h1 className="text-lg font-medium mb-2">Bitte kurz warten</h1>
-        <p className="text-sm text-black/60 dark:text-white/60">
+      <div className="lp-bahn schmal lp-seite mittig">
+        <h1 className="lp-h2">Bitte kurz warten</h1>
+        <p className="lp-text">
           Diese Analyse wird gerade aktualisiert. Die Anreicherung ist wieder
           möglich, sobald der aktuelle Lauf abgeschlossen ist.
         </p>
@@ -56,14 +56,13 @@ export default async function AnreichernPage({
   const report = analysisReportSchema.parse(analysis.results[0].payload);
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10">
-      <h1 className="text-xl font-semibold mb-2">
-        Besichtigungsergebnisse eintragen
-      </h1>
-      <p className="text-sm text-black/60 dark:text-white/60 mb-8">
-        Beantworten Sie die offenen Fragen aus Ihrer Analyse ({id}) – so genau wie möglich.
-        Anschließend überarbeiten wir den Report und zeigen Ihnen, was sich durch Ihre neuen
-        Informationen ändert.
+    <div className="lp-bahn mittel lp-seite">
+      <p className="lp-augenbraue">Analyse {id}</p>
+      <h1 className="lp-h2">Besichtigungsergebnisse eintragen</h1>
+      <p className="lp-text" style={{ marginBottom: "34px" }}>
+        Beantworten Sie die offenen Fragen aus Ihrer Analyse — so genau wie möglich. Anschließend
+        überarbeiten wir den Report und zeigen Ihnen, was sich durch Ihre neuen Informationen
+        ändert.
       </p>
       <EnrichForm analysisId={id} hypothesen={report.hypothesen} />
     </div>

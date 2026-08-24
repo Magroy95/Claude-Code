@@ -28,42 +28,47 @@ export function KontoAktionen() {
   }
 
   return (
-    <section className="mt-14 border-t border-current/10 pt-6 text-sm">
-      <div className="flex flex-wrap gap-x-6 gap-y-2">
-        <button type="button" onClick={abmelden} disabled={laeuft !== null} className="underline">
+    <section>
+      <div className="lp-aktionen">
+        <button type="button" onClick={abmelden} disabled={laeuft !== null} className="lp-textlink">
           Abmelden
         </button>
-        <a href="/api/konto/export" className="underline">
+        <a href="/api/konto/export" className="lp-textlink">
           Meine Daten herunterladen
         </a>
         <button
           type="button"
           onClick={() => setLoeschenOffen((o) => !o)}
-          className="underline opacity-70"
+          className="lp-textlink"
+          aria-expanded={loeschenOffen}
         >
           Konto löschen
         </button>
       </div>
 
       {loeschenOffen && (
-        <div className="mt-4 rounded border border-red-700/40 p-4">
-          <p className="font-medium">Konto und alle Analysen löschen?</p>
-          <p className="mt-2 leading-relaxed opacity-80">
+        <div className="lp-gefahr">
+          <h3>Konto und alle Analysen löschen?</h3>
+          <p>
             Ihr Zugang wird sofort gesperrt. Nach 30 Tagen werden Konto, Analysen und hochgeladene
             Exposés endgültig gelöscht — bis dahin können Sie sich melden, falls es ein Versehen
             war. Rechnungsbelege zu getätigten Käufen müssen wir steuerrechtlich aufbewahren (§ 147
             AO); sie enthalten keine Inhalte Ihrer Analysen.
           </p>
-          <div className="mt-4 flex gap-4">
+          <div className="knoepfe">
             <button
               type="button"
               onClick={loeschen}
               disabled={laeuft !== null}
-              className="rounded bg-red-700 px-3 py-1.5 text-background disabled:opacity-60"
+              className="lp-knopf klein"
             >
               {laeuft === "loeschen" ? "Wird gelöscht …" : "Endgültig löschen"}
             </button>
-            <button type="button" onClick={() => setLoeschenOffen(false)} className="underline">
+            <button
+              type="button"
+              onClick={() => setLoeschenOffen(false)}
+              className="lp-textlink"
+            >
               Abbrechen
             </button>
           </div>

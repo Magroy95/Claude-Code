@@ -15,17 +15,17 @@ export function LookupAnalysisForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-3">
+    <form onSubmit={handleSubmit} className="lp-zeile">
+      <label htmlFor="analyse-id" className="sr-only">
+        Analyse-ID
+      </label>
       <input
+        id="analyse-id"
         value={id}
         onChange={(e) => setId(e.target.value)}
         placeholder="z.B. HKC-4821-QX7K"
-        className="flex-1 rounded-md border border-black/15 dark:border-white/15 bg-transparent px-3 py-2 text-sm"
       />
-      <button
-        type="submit"
-        className="rounded-md bg-black dark:bg-white text-white dark:text-black px-4 py-2 text-sm font-medium"
-      >
+      <button type="submit" className="lp-knopf klein">
         Öffnen
       </button>
     </form>

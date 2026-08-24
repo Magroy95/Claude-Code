@@ -14,9 +14,9 @@ export const metadata = {
 };
 
 const AMPEL_TEXT: Record<string, { label: string; klasse: string }> = {
-  GRUEN: { label: "Niedriger Klärungsbedarf", klasse: "bg-emerald-600" },
-  GELB: { label: "Mittlerer Klärungsbedarf", klasse: "bg-amber-500" },
-  ROT: { label: "Hoher Klärungsbedarf", klasse: "bg-red-700" },
+  GRUEN: { label: "Niedriger Klärungsbedarf", klasse: "gruen" },
+  GELB: { label: "Mittlerer Klärungsbedarf", klasse: "gelb" },
+  ROT: { label: "Hoher Klärungsbedarf", klasse: "rot" },
 };
 
 const STATUS_TEXT: Record<string, string> = {
@@ -65,18 +65,18 @@ export default async function Konto() {
   });
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-14">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="lp-bahn mittel lp-seite">
+      <header className="lp-seitenkopf">
         <div>
-          <h1 className="text-2xl font-semibold">Meine Häuser</h1>
-          <p className="mt-1 text-sm opacity-70">{nutzer.email}</p>
+          <p className="lp-augenbraue">Ihr Konto</p>
+          <h1 className="lp-h2" style={{ marginBottom: 0 }}>
+            Meine Häuser
+          </h1>
+          <p className="lp-kennzeile">{nutzer.email}</p>
         </div>
         {/* Zielt auf das Formular, nicht auf die Abrufseite: Wer hier klickt,
             will ein neues Haus prüfen, nicht ein altes wiederfinden. */}
-        <Link
-          href="/#start"
-          className="rounded bg-foreground px-4 py-2 text-sm font-medium text-background"
-        >
+        <Link href="/#start" className="lp-knopf klein">
           Neues Haus prüfen
         </Link>
       </header>
@@ -86,9 +86,9 @@ export default async function Konto() {
           Die Produktnamen beginnen mit "Der". Im Fliesstext aneinandergereiht
           ergibt das mitten im Satz ein grossgeschriebenes "Der", deshalb steht
           der leere Fall unten als Aufzaehlung mit Doppelpunkt. */}
-      <section className="mt-8 rounded border border-current/15 p-4 text-sm">
+      <section className="lp-hinweis" style={{ marginTop: 0 }}>
         {uebersicht.paketLaeuftBis ? (
-          <p>
+          <>
             <strong>{PRODUKT.PAKET_3M.bezeichnung}</strong> aktiv — beliebig viele Häuser bis{" "}
             {uebersicht.paketLaeuftBis.toLocaleDateString("de-DE", {
               day: "2-digit",
@@ -96,54 +96,48 @@ export default async function Konto() {
               year: "numeric",
             })}
             .
-          </p>
+          </>
         ) : uebersicht.offeneEinzelkaeufe > 0 ? (
-          <p>
+          <>
             <strong>
               {uebersicht.offeneEinzelkaeufe}{" "}
               {uebersicht.offeneEinzelkaeufe === 1 ? "Einzelanalyse" : "Einzelanalysen"}
             </strong>{" "}
             noch nicht eingelöst.
-          </p>
+          </>
         ) : (
-          <p className="opacity-80">
+          <>
             Kein Guthaben. {PRODUKT.SINGLE.bezeichnung}:{" "}
             {formatPreis(PRODUKT.SINGLE.betragCent)} · {PRODUKT.PAKET_3M.bezeichnung}:{" "}
             {formatPreis(PRODUKT.PAKET_3M.betragCent)}.{" "}
-            <Link href="/preise" className="underline">
+            <Link href="/preise" className="lp-textlink" style={{ fontSize: "inherit" }}>
               Preise ansehen
             </Link>
-          </p>
+          </>
         )}
       </section>
 
       {zeilen.length === 0 ? (
-        <p className="mt-10 text-sm leading-relaxed opacity-80">
+        <p className="lp-text" style={{ marginTop: "38px" }}>
           Hier erscheinen Ihre Analysen, sobald Sie ein Haus geprüft haben. Der erste Blick auf ein
           Exposé ist kostenlos.
         </p>
       ) : (
-        <ul className="mt-8 divide-y divide-current/10 border-y border-current/10">
+        <ul className="lp-liste" style={{ marginTop: "34px" }}>
           {zeilen.map((z) => (
-            <li key={z.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 py-4">
-              <div className="min-w-0 flex-1">
-                <Link href={`/analyse/${z.id}`} className="font-medium hover:underline">
-                  {z.adresse ?? z.id}
-                </Link>
-                <p className="mt-0.5 text-xs opacity-65">
+            <li key={z.id}>
+              <div className="haupt">
+                <Link href={`/analyse/${z.id}`}>{z.adresse ?? z.id}</Link>
+                <p className="zusatz">
                   {z.createdAt.toLocaleDateString("de-DE")} · {z.id}
                   {z.preis !== null && <> · {formatEur(z.preis)}</>}
                   {!z.freigeschaltet && z.status === "DONE" && <> · Kurzfassung</>}
                 </p>
               </div>
               {z.status !== "DONE" ? (
-                <span className="text-xs opacity-70">{STATUS_TEXT[z.status]}</span>
+                <span className="lp-ampelmarke ohne">{STATUS_TEXT[z.status]}</span>
               ) : z.ampel ? (
-                <span className="flex items-center gap-2 text-xs">
-                  <span
-                    aria-hidden
-                    className={`h-2 w-2 rounded-full ${AMPEL_TEXT[z.ampel]?.klasse ?? ""}`}
-                  />
+                <span className={`lp-ampelmarke ${AMPEL_TEXT[z.ampel]?.klasse ?? ""}`}>
                   {AMPEL_TEXT[z.ampel]?.label ?? z.ampel}
                 </span>
               ) : null}
@@ -153,6 +147,6 @@ export default async function Konto() {
       )}
 
       <KontoAktionen />
-    </main>
+    </div>
   );
 }

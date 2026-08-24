@@ -29,20 +29,17 @@ export function RetryAnalysisButton({ analysisId }: { analysisId: string }) {
   }
 
   return (
-    <div className="mt-6">
-      <button
-        type="button"
-        onClick={handleRetry}
-        disabled={loading}
-        className="rounded-md bg-black dark:bg-white text-white dark:text-black px-4 py-2 text-sm font-medium disabled:opacity-50"
-      >
+    <div style={{ marginTop: "28px" }}>
+      <button type="button" onClick={handleRetry} disabled={loading} className="lp-knopf">
         {loading ? "Wird gestartet …" : "Erneut versuchen"}
       </button>
-      <p className="text-xs text-black/50 dark:text-white/50 mt-2">
+      <p className="lp-klein" style={{ marginTop: "12px" }}>
         Bereits erfolgreich abgeschlossene Analyse-Schritte werden dabei nicht wiederholt.
       </p>
       {error && (
-        <p className="text-sm text-red-600 dark:text-red-400 mt-2">{error}</p>
+        <p className="lp-fehler" style={{ marginTop: "14px", textAlign: "left" }}>
+          {error}
+        </p>
       )}
     </div>
   );

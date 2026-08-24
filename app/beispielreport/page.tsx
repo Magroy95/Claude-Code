@@ -34,21 +34,17 @@ export default async function BeispielreportSeite() {
   }
 
   return (
-    <main className="mx-auto max-w-xl px-4 py-20 text-center">
-      <h1 className="text-xl font-semibold tracking-tight">
-        Der Beispielreport ist gerade nicht abrufbar
-      </h1>
-      <p className="mt-3 text-sm text-black/70 dark:text-white/70 leading-relaxed">
+    <div className="lp-bahn schmal lp-seite mittig">
+      <p className="lp-augenbraue">Beispielreport</p>
+      <h1 className="lp-h2">Der Beispielreport ist gerade nicht abrufbar</h1>
+      <p className="lp-text">
         Das liegt an uns, nicht an Ihnen. Sie können stattdessen direkt Ihr eigenes Exposé
         hochladen — die Kurzfassung kostet nichts und zeigt Ihnen dasselbe, was der Beispielreport
         zeigen würde: wie wir arbeiten.
       </p>
-      <Link
-        href="/#start"
-        className="mt-6 inline-block rounded-md bg-black dark:bg-white text-white dark:text-black px-5 py-2.5 text-sm font-medium"
-      >
+      <Link href="/#start" className="lp-knopf" style={{ marginTop: "28px" }}>
         Eigenes Exposé hochladen
       </Link>
-    </main>
+    </div>
   );
 }

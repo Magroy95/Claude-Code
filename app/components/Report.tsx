@@ -376,7 +376,7 @@ export function Report({
   }));
 
   return (
-    <article className="report-doc mx-auto max-w-3xl px-6 py-10 print:py-0">
+    <article className="report-doc">
       <header className="rpt-header">
         {/* Das Dokument heißt so, wie es benutzt wird: Man nimmt es zum
             Termin mit. „Report" beschreibt das Format, „Besichtigungsmappe"

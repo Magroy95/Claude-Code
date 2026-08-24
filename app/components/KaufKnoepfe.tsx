@@ -29,13 +29,13 @@ export function KaufKnoepfe({
   }
 
   return (
-    <div className="mt-8">
-      <div className="flex flex-wrap gap-3">
+    <div style={{ marginTop: "30px" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
         <button
           type="button"
           onClick={() => kaufen("SINGLE")}
           disabled={laeuft !== null}
-          className="rounded bg-foreground px-4 py-2.5 text-sm font-medium text-background disabled:opacity-60"
+          className="lp-knopf"
         >
           {laeuft === "SINGLE" ? "Einen Moment …" : `Einzelanalyse kaufen — ${preisEinzel}`}
         </button>
@@ -43,12 +43,16 @@ export function KaufKnoepfe({
           type="button"
           onClick={() => kaufen("PAKET_3M")}
           disabled={laeuft !== null}
-          className="rounded border border-current/30 px-4 py-2.5 text-sm font-medium disabled:opacity-60"
+          className="lp-knopf stumm"
         >
           {laeuft === "PAKET_3M" ? "Einen Moment …" : `Paket kaufen — ${preisPaket}`}
         </button>
       </div>
-      {fehler && <p className="mt-3 text-sm text-red-600">{fehler}</p>}
+      {fehler && (
+        <p className="lp-fehler" style={{ marginTop: "16px" }}>
+          {fehler}
+        </p>
+      )}
     </div>
   );
 }

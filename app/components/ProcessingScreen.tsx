@@ -44,48 +44,33 @@ export function ProcessingScreen({ analysisId }: { analysisId: string }) {
   }, [analysisId, router]);
 
   return (
-    <div className="mx-auto max-w-md px-4 py-20">
-      <h1 className="text-lg font-medium">Wir lesen gerade Ihr Exposé</h1>
-      <p className="mt-2 text-sm text-black/60 dark:text-white/60">
+    <div className="lp-bahn schmal lp-seite">
+      <p className="lp-augenbraue">Läuft gerade</p>
+      <h1 className="lp-h2">Wir lesen gerade Ihr Exposé</h1>
+      <p className="lp-text">
         Das dauert in der Regel etwa {DAUER_TYPISCH_MINUTEN} Minuten. Sie können die Seite
         schließen — sobald Ihr Ergebnis da ist, schicken wir Ihnen den Link per E-Mail.
       </p>
 
-      <ol className="mt-8 space-y-3">
+      <ol className="lp-fortschritt" style={{ marginTop: "34px" }}>
         {PIPELINE_SCHRITTE.map((schritt, i) => {
           const erledigt = i < fertig;
           const laeuft = i === fertig;
           return (
-            <li key={schritt.key} className="flex items-start gap-3 text-sm">
-              <span aria-hidden className="mt-0.5 w-4 shrink-0 text-center">
-                {erledigt ? (
-                  "✓"
-                ) : laeuft ? (
-                  <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-black/20 border-t-black dark:border-white/20 dark:border-t-white" />
-                ) : (
-                  "·"
-                )}
+            <li
+              key={schritt.key}
+              className={erledigt ? "erledigt" : laeuft ? "laeuft" : undefined}
+            >
+              <span aria-hidden className="marke">
+                {erledigt ? "✓" : laeuft ? <span className="lp-dreher" /> : "·"}
               </span>
-              <span
-                className={
-                  erledigt
-                    ? "text-black/50 dark:text-white/50"
-                    : laeuft
-                      ? "font-medium"
-                      : "text-black/35 dark:text-white/35"
-                }
-              >
-                {schritt.label}
-              </span>
+              <span>{schritt.label}</span>
             </li>
           );
         })}
       </ol>
 
-      <p
-        className="mt-8 text-xs text-black/40 dark:text-white/40"
-        aria-live="polite"
-      >
+      <p className="lp-klein" style={{ marginTop: "30px" }} aria-live="polite">
         Schritt {Math.min(fertig + 1, PIPELINE_SCHRITTE.length)} von {PIPELINE_SCHRITTE.length} ·
         Analyse-ID: {analysisId}
       </p>

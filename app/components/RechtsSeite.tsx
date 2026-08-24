@@ -3,9 +3,11 @@ import Link from "next/link";
 /**
  * Gemeinsames Gerüst für Impressum, Datenschutz, AGB und Widerruf.
  *
- * Bewusst schlicht und ohne das Report-Designsystem: Rechtstexte sollen
- * lesbar und druckbar sein, nicht gestaltet. Die Querverweise unten stehen
- * auf jeder der vier Seiten, damit man von jeder zu jeder kommt.
+ * Zurückhaltend gesetzt, aber in denselben Schriften und Farben wie der
+ * Rest: Rechtstexte sollen lesbar und druckbar sein, nicht gestaltet — nur
+ * eben nicht so, als gehörten sie zu einer anderen Website. Die
+ * Querverweise unten stehen auf jeder der vier Seiten, damit man von jeder
+ * zu jeder kommt.
  */
 export function RechtsSeite({
   titel,
@@ -17,27 +19,32 @@ export function RechtsSeite({
   children: React.ReactNode;
 }) {
   return (
-    <main className="mx-auto max-w-2xl px-5 py-14">
-      <h1 className="text-2xl font-semibold">{titel}</h1>
-      {stand && <p className="mt-1 text-xs opacity-60">Stand: {stand}</p>}
-      <div className="rechtstext mt-8">{children}</div>
-      <nav className="mt-14 flex flex-wrap gap-x-5 gap-y-2 border-t border-current/10 pt-6 text-sm">
-        <Link href="/impressum" className="underline">
+    <div className="lp-bahn mittel lp-seite">
+      <p className="lp-augenbraue">Rechtliches</p>
+      <h1 className="lp-h2" style={{ marginBottom: stand ? "6px" : "14px" }}>
+        {titel}
+      </h1>
+      {stand && <p className="lp-kennzeile" style={{ marginTop: 0 }}>Stand: {stand}</p>}
+      <div className="rechtstext" style={{ marginTop: "30px" }}>
+        {children}
+      </div>
+      <nav className="lp-aktionen">
+        <Link href="/impressum" className="lp-textlink">
           Impressum
         </Link>
-        <Link href="/datenschutz" className="underline">
+        <Link href="/datenschutz" className="lp-textlink">
           Datenschutz
         </Link>
-        <Link href="/agb" className="underline">
+        <Link href="/agb" className="lp-textlink">
           AGB
         </Link>
-        <Link href="/widerruf" className="underline">
+        <Link href="/widerruf" className="lp-textlink">
           Widerruf
         </Link>
-        <Link href="/" className="underline opacity-70">
+        <Link href="/" className="lp-textlink">
           Zur Startseite
         </Link>
       </nav>
-    </main>
+    </div>
   );
 }

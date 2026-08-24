@@ -27,7 +27,7 @@ export default async function PreiseSeite({
   const uebersicht = nutzer ? await berechtigungsUebersicht(nutzer.id) : null;
 
   return (
-    <main className="lp-bahn" style={{ paddingTop: "62px", paddingBottom: "40px", maxWidth: "980px" }}>
+    <div className="lp-bahn lp-seite" style={{ maxWidth: "980px" }}>
       <div className="lp-kopfzeile">
         <p className="lp-augenbraue">Preise</p>
         <h1 className="lp-h2">Was es kostet</h1>
@@ -143,6 +143,6 @@ export default async function PreiseSeite({
         </Link>
         .
       </p>
-    </main>
+    </div>
   );
 }

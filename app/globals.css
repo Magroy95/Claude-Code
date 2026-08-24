@@ -128,7 +128,11 @@ body {
   font-family: var(--rpt-body);
   font-size: 15px;
   line-height: 1.6;
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 40px 24px;
 }
+@media print { .report-doc { padding-top: 0; padding-bottom: 0; } }
 
 .report-doc h1,
 .report-doc h2,
@@ -524,30 +528,51 @@ body {
 
 /* ============================================================
    Rechtstexte
-   Bewusst eigenständig und ohne das Report-Designsystem:
-   Impressum, Datenschutz, AGB und Widerruf sollen vor allem
-   lesbar und druckbar sein.
+   Zurückhaltend gesetzt, aber in denselben Schriften und Farben
+   wie der Rest: Impressum, Datenschutz, AGB und Widerruf sollen
+   vor allem lesbar und druckbar sein — nur eben nicht so, als
+   gehörten sie zu einer anderen Website.
    ============================================================ */
-.rechtstext { font-size: 14.5px; line-height: 1.7; }
-.rechtstext h2 { font-size: 16px; font-weight: 600; margin: 28px 0 8px; }
-.rechtstext h3 { font-size: 14.5px; font-weight: 600; margin: 18px 0 6px; }
-.rechtstext p { margin: 0 0 12px; }
-.rechtstext ul, .rechtstext ol { margin: 0 0 12px; padding-left: 20px; }
-.rechtstext li { margin-bottom: 5px; }
-.rechtstext a { text-decoration: underline; }
-.rechtstext blockquote {
-  margin: 0 0 12px; padding: 12px 14px;
-  border-left: 3px solid currentColor; opacity: 0.85;
+.rechtstext {
+  font-family: var(--rpt-body); font-size: 15.5px; line-height: 1.72;
+  color: var(--ink-soft); max-width: 72ch;
 }
+.rechtstext h2 {
+  font-family: var(--rpt-display); font-size: 17px; font-weight: 600;
+  letter-spacing: -0.01em; color: var(--ink); margin: 32px 0 9px;
+}
+.rechtstext h3 {
+  font-family: var(--rpt-display); font-size: 15px; font-weight: 600;
+  color: var(--ink); margin: 20px 0 6px;
+}
+.rechtstext p { margin: 0 0 13px; }
+.rechtstext strong, .rechtstext b { color: var(--ink); font-weight: 600; }
+.rechtstext ul, .rechtstext ol { margin: 0 0 13px; padding-left: 20px; }
+.rechtstext li { margin-bottom: 6px; }
+.rechtstext a {
+  color: var(--ink); text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: var(--line);
+}
+.rechtstext a:hover { color: var(--brick); text-decoration-color: var(--brick); }
+.rechtstext blockquote {
+  margin: 0 0 13px; padding: 12px 15px;
+  border-left: 3px solid var(--line); background: var(--paper-raised);
+  border-radius: 0 var(--radius-s) var(--radius-s) 0;
+}
+.rechtstext blockquote p:last-child { margin-bottom: 0; }
 .rechtstext table {
-  width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 13px;
+  width: 100%; border-collapse: collapse; margin: 0 0 18px; font-size: 13.5px;
   display: block; overflow-x: auto;
 }
 .rechtstext th, .rechtstext td {
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  padding: 7px 9px; text-align: left; vertical-align: top;
+  border: 1px solid var(--line);
+  padding: 8px 10px; text-align: left; vertical-align: top;
 }
-.rechtstext th { font-weight: 600; }
+.rechtstext th {
+  font-family: var(--rpt-mono); font-size: 10.5px; letter-spacing: 0.07em;
+  text-transform: uppercase; font-weight: 400; color: var(--ink-faint);
+  background: var(--paper-raised);
+}
 
 /* --- Bezahlschranke im Report --- */
 /* Bewusst keine verschwommene Vorschau darunter: Wer Unscharfes sieht, ahnt
@@ -691,6 +716,7 @@ body {
   transition: background 120ms ease;
 }
 .lp-knopf:hover { background: color-mix(in srgb, var(--brick) 86%, #000); }
+.lp-knopf:disabled { opacity: 0.6; cursor: default; }
 .lp-knopf.klein { padding: 10px 16px; font-size: 11px; }
 .lp-knopf.stumm {
   background: transparent; color: var(--ink); border-color: var(--line);
@@ -706,6 +732,10 @@ body {
   text-decoration-color: var(--line);
 }
 .lp-textlink:hover { color: var(--brick); text-decoration-color: var(--brick); }
+/* Ein Knopf, der wie ein Link aussieht: „Abmelden" und „Abbrechen" sind
+   Handlungen und muessen Knoepfe bleiben, sollen aber nicht wie der
+   Hauptaufruf wirken. */
+button.lp-textlink { background: none; border: 0; padding: 0; cursor: pointer; }
 
 /* --- Typografie der Seite --- */
 .lp-augenbraue {
@@ -982,4 +1012,222 @@ body {
   border: 1px solid var(--line); border-left: 3px solid var(--blueprint);
   border-radius: 0 var(--radius) var(--radius) 0; background: var(--paper-raised);
   font-size: 15px; line-height: 1.6; color: var(--ink-soft);
+}
+/* Dieselbe Form, andere Dringlichkeit: Der Hinweis erklaert, die Warnung
+   sagt, dass etwas schiefgegangen ist. Rot bleibt der Ampel vorbehalten. */
+.lp-warnung {
+  padding: 12px 15px;
+  border: 1px solid var(--line); border-left: 3px solid var(--ochre);
+  border-radius: 0 var(--radius) var(--radius) 0; background: var(--ochre-tint);
+  font-size: 15px; line-height: 1.6; color: var(--ink-soft);
+}
+
+/* ============================================================
+   Innenseiten
+   Konto, Anmeldung, Abruf, Wartescreen und die Rechtstexte
+   liefen bis zuletzt ueber Tailwind-Utilities: gleiche Farben,
+   aber eigene Schriftgrade und Abstaende. Hier stehen die
+   Bausteine, die diese Seiten brauchen und die Startseite nicht
+   hergibt.
+   ============================================================ */
+.lp-bahn.schmal { max-width: 560px; }
+.lp-bahn.mittel { max-width: 780px; }
+/* Nur die Senkrechte setzen: Die Kurzschreibweise wuerde den seitlichen
+   Innenabstand von .lp-bahn mit ueberschreiben, und auf dem Telefon klebt
+   der Text dann am Displayrand. */
+.lp-seite { padding-top: 58px; padding-bottom: 78px; }
+.lp-seite.mittig { text-align: center; }
+.lp-seite.mittig .lp-text { margin-left: auto; margin-right: auto; }
+
+/* Kopf einer Innenseite: Titel links, eine Handlung rechts. */
+.lp-seitenkopf {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  justify-content: space-between; gap: 16px 24px; margin-bottom: 30px;
+}
+.lp-kennzeile {
+  font-family: var(--rpt-mono); font-size: 12px; letter-spacing: 0.04em;
+  color: var(--ink-faint); margin: 8px 0 0;
+}
+
+/* Ampel als Zeilenmarke — dieselben drei Farben wie im Report. */
+.lp-ampelmarke {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-family: var(--rpt-mono); font-size: 10.5px; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--ink-soft); white-space: nowrap;
+}
+.lp-ampelmarke::before {
+  content: ""; width: 9px; height: 9px; border-radius: 50%; flex: none;
+  background: var(--ink-faint);
+}
+.lp-ampelmarke.gruen::before { background: var(--moss); }
+.lp-ampelmarke.gelb::before { background: var(--ochre); }
+.lp-ampelmarke.rot::before { background: var(--brick); }
+.lp-ampelmarke.ohne::before { display: none; }
+
+/* Liste der geprueften Haeuser im Konto. */
+.lp-liste { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.lp-liste > li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px;
+  padding: 15px 0; border-bottom: 1px solid var(--line);
+}
+.lp-liste .haupt { min-width: 0; flex: 1 1 260px; }
+.lp-liste .haupt a {
+  font-family: var(--rpt-display); font-size: 16.5px; font-weight: 600;
+  color: var(--ink); text-decoration: none;
+}
+.lp-liste .haupt a:hover {
+  color: var(--brick); text-decoration: underline; text-underline-offset: 3px;
+}
+.lp-liste .zusatz {
+  font-family: var(--rpt-mono); font-size: 11.5px; letter-spacing: 0.03em;
+  line-height: 1.6; color: var(--ink-faint); margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+/* Auf schmalen Displays reicht die Zeile nicht fuer Adresse und Ampel
+   nebeneinander; die Ampel rutscht dann unter die Zeile statt in den Rand. */
+@media (max-width: 560px) {
+  .lp-liste > li { display: block; }
+  .lp-liste .lp-ampelmarke { margin-top: 8px; white-space: normal; }
+}
+
+/* Wartescreen: die echten Pipeline-Schritte, einer pro Zeile. */
+.lp-fortschritt { list-style: none; margin: 0; padding: 0; }
+.lp-fortschritt li {
+  display: grid; grid-template-columns: 20px 1fr; gap: 0 14px; align-items: start;
+  padding: 11px 0; border-top: 1px solid var(--line);
+  font-size: 15.5px; line-height: 1.5; color: var(--ink-faint);
+}
+.lp-fortschritt li:first-child { border-top: 0; }
+.lp-fortschritt .marke {
+  font-family: var(--rpt-mono); font-size: 12px; line-height: 1.5;
+  text-align: center; color: var(--ink-faint);
+}
+.lp-fortschritt li.erledigt { color: var(--ink-soft); }
+.lp-fortschritt li.erledigt .marke { color: var(--moss); }
+.lp-fortschritt li.laeuft {
+  color: var(--ink); font-family: var(--rpt-display); font-weight: 600;
+}
+.lp-dreher {
+  display: inline-block; width: 11px; height: 11px; margin-top: 3px;
+  border: 2px solid var(--line); border-top-color: var(--brick);
+  border-radius: 50%; animation: lp-drehen 0.9s linear infinite;
+}
+@keyframes lp-drehen { to { transform: rotate(360deg); } }
+
+/* Eingabe und Knopf in einer Zeile (Analyse-ID abrufen). */
+.lp-zeile { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; }
+.lp-zeile input {
+  flex: 1 1 200px; min-width: 0; font: inherit;
+  font-family: var(--rpt-mono); font-size: 13px; letter-spacing: 0.05em;
+  color: var(--ink); background: var(--paper);
+  border: 1px solid var(--line); border-radius: var(--radius-s); padding: 11px 12px;
+}
+.lp-zeile input:focus-visible {
+  outline: 2px solid var(--brick); outline-offset: 1px; border-color: var(--brick);
+}
+
+/* Werkzeugleiste ueber dem freigeschalteten Report. Buendig mit dem
+   Dokument darunter, deshalb dieselbe Breite und derselbe Innenabstand
+   wie .report-doc. */
+.lp-werkzeuge {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  max-width: 768px; margin: 0 auto; padding: 26px 24px 0;
+}
+.lp-werkzeuge .versionen {
+  margin-left: auto; display: flex; align-items: center; gap: 8px;
+  font-family: var(--rpt-mono); font-size: 10.5px; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--ink-faint);
+}
+.lp-werkzeuge .versionen a {
+  color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px;
+  padding: 2px 6px;
+}
+.lp-werkzeuge .versionen a.aktiv {
+  color: var(--paper-raised); background: var(--ink);
+  text-decoration: none; border-radius: var(--radius-s);
+}
+
+/* Stille Kontoaktionen unter dem Strich. */
+.lp-aktionen {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px;
+  margin-top: 54px; padding-top: 22px; border-top: 1px solid var(--line);
+}
+.lp-aktionen .lp-textlink { font-size: 14px; }
+
+/* Loeschen ist die einzige Stelle, an der Ziegelrot nicht Ampel bedeutet,
+   sondern Endgueltigkeit — deshalb bekommt sie einen eigenen Kasten. */
+.lp-gefahr {
+  margin-top: 18px; padding: 16px 18px;
+  border: 1px solid var(--brick); border-left-width: 3px;
+  border-radius: 0 var(--radius) var(--radius) 0; background: var(--brick-tint);
+}
+.lp-gefahr h3 {
+  font-family: var(--rpt-display); font-size: 15.5px; font-weight: 600;
+  color: var(--ink); margin: 0 0 8px;
+}
+.lp-gefahr p { font-size: 14.5px; line-height: 1.62; color: var(--ink-soft); margin: 0; }
+.lp-gefahr .knoepfe {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin-top: 16px;
+}
+
+/* Zahlentabelle (Auswertung). */
+.lp-tabelle { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.lp-tabelle th {
+  font-family: var(--rpt-mono); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; font-weight: 400; color: var(--ink-faint);
+  text-align: left; padding: 0 0 9px; border-bottom: 1px solid var(--line);
+}
+.lp-tabelle td {
+  padding: 11px 0; border-bottom: 1px solid var(--line); color: var(--ink-soft);
+}
+.lp-tabelle .zahl {
+  text-align: right; font-family: var(--rpt-mono);
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+.lp-tabelle td.zahl.leise { color: var(--ink-faint); }
+
+/* Anreicherungsformular: eine Karte je offener Hypothese. */
+.lp-hypokarte {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--paper-raised); padding: 18px 20px;
+}
+.lp-hypokarte .kategorie {
+  font-family: var(--rpt-mono); font-size: 10.5px; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--ink-faint); margin: 0 0 6px;
+}
+.lp-hypokarte .titel {
+  font-family: var(--rpt-display); font-size: 16px; font-weight: 600;
+  color: var(--ink); margin: 0 0 10px;
+}
+.lp-hypokarte .fragen {
+  margin: 0 0 14px; padding: 0; list-style: none;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.lp-hypokarte .fragen li {
+  position: relative; padding-left: 17px; font-size: 14.5px; line-height: 1.55;
+  color: var(--ink-soft);
+}
+.lp-hypokarte .fragen li::before {
+  content: ""; position: absolute; left: 0; top: 8px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint);
+}
+.lp-hypokarte textarea,
+.lp-hypokarte input[type="file"] {
+  width: 100%; font: inherit; font-size: 15px; color: var(--ink);
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: var(--radius-s); padding: 10px 12px;
+}
+.lp-hypokarte textarea { resize: vertical; min-height: 76px; margin-bottom: 10px; }
+.lp-hypokarte input[type="file"] {
+  padding: 8px; font-family: var(--rpt-mono); font-size: 12.5px;
+}
+.lp-hypokarte input[type="file"]::file-selector-button {
+  font-family: var(--rpt-mono); font-size: 11px; letter-spacing: 0.07em;
+  text-transform: uppercase; background: var(--ink); color: var(--paper-raised);
+  border: 0; border-radius: var(--radius-s); padding: 8px 13px;
+  margin-right: 12px; cursor: pointer;
+}
+.lp-hypokarte textarea:focus-visible,
+.lp-hypokarte input:focus-visible {
+  outline: 2px solid var(--brick); outline-offset: 1px; border-color: var(--brick);
 }
